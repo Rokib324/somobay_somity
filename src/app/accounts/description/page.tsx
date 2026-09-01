@@ -3,7 +3,7 @@
 import React from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { mockAccountHeads } from '@/data/mockData';
+
 import { Badge } from '@/components/ui/Badge';
 
 export default function AccountDescriptionPage() {
@@ -40,7 +40,7 @@ export default function AccountDescriptionPage() {
         </div>
 
         <div className="divide-y divide-slate-100">
-          {mockAccountHeads.map((head) => (
+          {[].map((head) => (
             <div key={head.id} className="py-4 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

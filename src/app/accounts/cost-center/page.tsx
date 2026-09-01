@@ -3,7 +3,7 @@
 import React from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { mockBranches } from '@/data/mockData';
+
 
 export default function CostCenterPage() {
   return (
@@ -23,7 +23,7 @@ export default function CostCenterPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {mockBranches.map((branch) => (
+          {[].map((branch) => (
             <div key={branch.id} className="p-5 border border-slate-200 rounded-xl bg-slate-50/50 space-y-3">
               <div className="flex justify-between items-start">
                 <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded">

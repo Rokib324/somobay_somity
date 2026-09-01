@@ -1,16 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DataTable } from '@/components/ui/DataTable';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { mockAccountHeads } from '@/data/mockData';
 import Link from 'next/link';
+
+interface AccountHead { _id: string; code: string; name: string; group: string; type: string; balance: number; status: string; parentCode?: string; }
 
 export default function AccountsOverviewPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [accounts, setAccounts] = useState<AccountHead[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/accounts/chart-of-accounts').then(r => r.json()).then(d => {
+      setAccounts(d.accounts ?? []);
+      setLoading(false);
+    });
+  }, []);
 
   return (
     <AppLayout>
@@ -80,7 +90,7 @@ export default function AccountsOverviewPage() {
           { header: 'Current Balance', accessor: (item) => `৳ ${item.balance.toLocaleString()}`, className: 'font-bold text-slate-900' },
           { header: 'Status', accessor: (item) => <Badge variant="success">{item.status}</Badge> },
         ]}
-        data={mockAccountHeads}
+        data={accounts}
       />
 
       {/* Add New Account Head Modal */}

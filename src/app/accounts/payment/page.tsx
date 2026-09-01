@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { mockAccountHeads } from '@/data/mockData';
+
 
 export default function VoucherPaymentPage() {
   const [voucherType, setVoucherType] = useState('Debit Payment Voucher');
@@ -44,7 +44,7 @@ export default function VoucherPaymentPage() {
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Debit Account Head</label>
               <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                {mockAccountHeads.map((h) => (
+                {[].map((h) => (
                   <option key={h.id}>{h.code} - {h.name}</option>
                 ))}
               </select>

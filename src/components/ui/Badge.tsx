@@ -2,7 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 
 export interface BadgeProps {
-  variant?: 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+  variant?: 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'purple' | 'default';
   children: React.ReactNode;
   className?: string;
 }
@@ -14,6 +14,8 @@ export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', children, cla
     danger: 'bg-rose-50 text-rose-700 border-rose-200',
     info: 'bg-blue-50 text-blue-700 border-blue-200',
     neutral: 'bg-slate-100 text-slate-700 border-slate-200',
+    purple: 'bg-purple-50 text-purple-700 border-purple-200',
+    default: 'bg-slate-100 text-slate-500 border-slate-200',
   };
 
   return (

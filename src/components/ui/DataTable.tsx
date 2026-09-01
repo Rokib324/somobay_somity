@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export interface Column<T> {
   header: string;
@@ -15,23 +15,42 @@ export interface DataTableProps<T> {
   actions?: (item: T) => React.ReactNode;
   onAddClick?: () => void;
   addButtonText?: string;
+  onSearch?: (query: string) => void; // server-side search callback
 }
 
-export function DataTable<T extends { id: string | number }>({
+// Accept both `id` and `_id` (MongoDB documents)
+function getRowKey<T extends { id?: string | number; _id?: string }>(item: T, idx: number): string {
+  return String(item._id ?? item.id ?? idx);
+}
+
+export function DataTable<T extends { id?: string | number; _id?: string }>({
   columns,
   data,
   searchPlaceholder = 'Search records...',
   actions,
   onAddClick,
   addButtonText = 'Add New',
+  onSearch,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
 
-  const filteredData = data.filter((item) => {
-    if (!search) return true;
-    const strVal = JSON.stringify(item).toLowerCase();
-    return strVal.includes(search.toLowerCase());
-  });
+  // Client-side filter (when no onSearch callback provided)
+  const filteredData = onSearch
+    ? data
+    : data.filter((item) => {
+        if (!search) return true;
+        const strVal = JSON.stringify(item).toLowerCase();
+        return strVal.includes(search.toLowerCase());
+      });
+
+  // Debounced server-side search
+  useEffect(() => {
+    if (!onSearch) return;
+    const timer = setTimeout(() => {
+      onSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, onSearch]);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 card-shadow overflow-hidden">
@@ -74,10 +93,12 @@ export function DataTable<T extends { id: string | number }>({
           <tbody className="divide-y divide-slate-100">
             {filteredData.length > 0 ? (
               filteredData.map((item, rowIdx) => (
-                <tr key={item.id || rowIdx} className="hover:bg-slate-50/80 transition-colors">
+                <tr key={getRowKey(item, rowIdx)} className="hover:bg-slate-50/80 transition-colors">
                   {columns.map((col, colIdx) => (
                     <td key={colIdx} className={`py-3.5 px-4 text-slate-700 ${col.className || ''}`}>
-                      {typeof col.accessor === 'function' ? col.accessor(item) : (item[col.accessor] as React.ReactNode)}
+                      {typeof col.accessor === 'function'
+                        ? col.accessor(item)
+                        : (item[col.accessor] as React.ReactNode)}
                     </td>
                   ))}
                   {actions && <td className="py-3.5 px-4 text-right whitespace-nowrap">{actions(item)}</td>}
@@ -97,14 +118,9 @@ export function DataTable<T extends { id: string | number }>({
         </table>
       </div>
 
-      {/* Table Footer / Pagination */}
+      {/* Table Footer */}
       <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs text-slate-500">
-        <span>Showing {filteredData.length} of {data.length} records</span>
-        <div className="flex items-center gap-1">
-          <button disabled className="px-2.5 py-1 rounded border border-slate-200 text-slate-400 bg-white cursor-not-allowed">Previous</button>
-          <button className="px-2.5 py-1 rounded border border-blue-600 bg-blue-600 text-white font-medium">1</button>
-          <button disabled className="px-2.5 py-1 rounded border border-slate-200 text-slate-400 bg-white cursor-not-allowed">Next</button>
-        </div>
+        <span>Showing {filteredData.length} records</span>
       </div>
     </div>
   );
