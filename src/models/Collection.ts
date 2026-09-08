@@ -6,7 +6,7 @@ export interface ICollection extends Document {
   memberName: string;
   accountNo: string;
   branch: string;
-  type: 'savings' | 'loan_installment' | 'advance';
+  type: 'savings' | 'loan_installment' | 'advance' | 'withdrawal';
   accountId?: mongoose.Types.ObjectId;
   amount: number;
   collectedBy: string;
@@ -25,7 +25,7 @@ const CollectionSchema = new Schema<ICollection>(
     branch: { type: String, required: true },
     type: {
       type: String,
-      enum: ['savings', 'loan_installment', 'advance'],
+      enum: ['savings', 'loan_installment', 'advance', 'withdrawal'],
       required: true,
     },
     accountId: { type: Schema.Types.ObjectId },

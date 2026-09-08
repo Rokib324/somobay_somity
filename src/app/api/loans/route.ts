@@ -57,9 +57,35 @@ export async function POST(req: NextRequest) {
     const principal = parseFloat(body.principalAmount);
     const rate = parseFloat(body.interestRate) / 100;
     const months = parseInt(body.installments);
+    const installmentType: string = body.installmentType || 'Monthly';
     const interestAmount = principal * rate * (months / 12);
     const totalAmount = principal + interestAmount;
     const installmentAmount = Math.ceil(totalAmount / months);
+
+    // Generate installment schedule
+    const schedule = [];
+    const startDate = new Date();
+    const principalPerInstallment = Math.floor(principal / months);
+    const interestPerInstallment = Math.ceil(interestAmount / months);
+
+    for (let i = 1; i <= months; i++) {
+      const dueDate = new Date(startDate);
+      if (installmentType === 'Monthly') {
+        dueDate.setMonth(dueDate.getMonth() + i);
+      } else if (installmentType === 'Weekly') {
+        dueDate.setDate(dueDate.getDate() + i * 7);
+      } else {
+        dueDate.setDate(dueDate.getDate() + i);
+      }
+      schedule.push({
+        dueDate,
+        principal: principalPerInstallment,
+        interest: interestPerInstallment,
+        total: installmentAmount,
+        paidAmount: 0,
+        status: 'pending',
+      });
+    }
 
     const loan = await LoanAccount.create({
       ...body,
@@ -69,6 +95,7 @@ export async function POST(req: NextRequest) {
       dueAmount: totalAmount,
       installmentAmount,
       status: 'pending_approval',
+      schedule,
     });
 
     return NextResponse.json(loan, { status: 201 });
