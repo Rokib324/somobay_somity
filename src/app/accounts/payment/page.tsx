@@ -1,14 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 
+interface AccountHead {
+  _id: string;
+  code: string;
+  name: string;
+}
 
 export default function VoucherPaymentPage() {
   const [voucherType, setVoucherType] = useState('Debit Payment Voucher');
   const [amount, setAmount] = useState('');
   const [narration, setNarration] = useState('');
+  const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
+
+  useEffect(() => {
+    fetch('/api/accounts/chart-of-accounts')
+      .then((res) => res.json())
+      .then((data) => setAccountHeads(data.accounts || []))
+      .catch(() => setAccountHeads([]));
+  }, []);
 
   return (
     <AppLayout>
@@ -44,9 +57,13 @@ export default function VoucherPaymentPage() {
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Debit Account Head</label>
               <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-                {[].map((h) => (
-                  <option key={h.id}>{h.code} - {h.name}</option>
-                ))}
+                {accountHeads.length === 0 ? (
+                  <option value="">Loading account heads...</option>
+                ) : (
+                  accountHeads.map((h) => (
+                    <option key={h._id} value={h.code}>{h.code} - {h.name}</option>
+                  ))
+                )}
               </select>
             </div>
             <div>

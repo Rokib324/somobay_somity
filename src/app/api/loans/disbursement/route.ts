@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
-import LoanAccount from '@/models/LoanAccount';
+import LoanAccount, { ILoanAccount } from '@/models/LoanAccount';
 import Member from '@/models/Member';
 
 // GET pending approval + approved (ready for disburse)
@@ -8,9 +8,9 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || 'approved';
+    const status = (searchParams.get('status') || 'approved') as ILoanAccount['status'];
 
-    const loans = await LoanAccount.find({ status: status as string })
+    const loans = await LoanAccount.find({ status })
       .sort({ applicationDate: -1 })
       .lean();
 
