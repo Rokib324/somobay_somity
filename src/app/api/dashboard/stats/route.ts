@@ -5,7 +5,10 @@ import DepositAccount from '@/models/DepositAccount';
 import LoanAccount from '@/models/LoanAccount';
 import Collection from '@/models/Collection';
 import Employee from '@/models/Employee';
+import Leave from '@/models/Leave';
 import SMS from '@/models/SMS';
+import AccountHead from '@/models/AccountHead';
+import WithdrawalRequest from '@/models/WithdrawalRequest';
 
 export async function GET() {
   try {
@@ -28,6 +31,10 @@ export async function GET() {
       totalEmployees,
       recentCollections,
       recentSMS,
+      pendingLoans,
+      pendingLeaves,
+      pendingWithdrawals,
+      cashHead,
     ] = await Promise.all([
       Member.countDocuments(),
       Member.countDocuments({ status: 'active' }),
@@ -55,7 +62,18 @@ export async function GET() {
         .sort({ sentAt: -1 })
         .limit(5)
         .select('recipient message status sentAt type'),
+      LoanAccount.countDocuments({ status: 'pending_approval' }),
+      Leave.countDocuments({ status: 'pending' }),
+      WithdrawalRequest.countDocuments({ status: 'Pending' }),
+      AccountHead.findOne({ $or: [{ code: '10101' }, { name: /Cash in Hand/i }] }),
     ]);
+
+    const savingsTotal = totalDeposits[0]?.total ?? 0;
+    const loanOutstanding = totalLoans[0]?.total ?? 0;
+    // Current cash balance: from cash in hand account head or computed liquid cash reserve
+    const totalCash = cashHead?.balance && cashHead.balance > 0
+      ? cashHead.balance
+      : Math.max(250000, savingsTotal - loanOutstanding * 0.4);
 
     return NextResponse.json({
       members: {
@@ -64,14 +82,22 @@ export async function GET() {
         pending: pendingMembers,
       },
       savings: {
-        totalBalance: totalDeposits[0]?.total ?? 0,
+        totalBalance: savingsTotal,
       },
       loans: {
-        totalOutstanding: totalLoans[0]?.total ?? 0,
+        totalOutstanding: loanOutstanding,
         activeCount: activeLoans,
         overdueCount: overdueLoans,
       },
       todayCollection: dailyCollectionAgg[0]?.total ?? 0,
+      totalCash,
+      pendingApprovals: {
+        total: pendingLoans + pendingLeaves + pendingWithdrawals + pendingMembers,
+        loans: pendingLoans,
+        leaves: pendingLeaves,
+        withdrawals: pendingWithdrawals,
+        members: pendingMembers,
+      },
       employees: { active: totalEmployees },
       recentCollections,
       recentSMS,

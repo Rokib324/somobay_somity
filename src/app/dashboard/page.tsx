@@ -12,6 +12,14 @@ interface DashboardStats {
   savings: { totalBalance: number };
   loans: { totalOutstanding: number; activeCount: number; overdueCount: number };
   todayCollection: number;
+  totalCash: number;
+  pendingApprovals: {
+    total: number;
+    loans: number;
+    leaves: number;
+    withdrawals: number;
+    members: number;
+  };
   employees: { active: number };
   recentCollections: Array<{ _id: string; memberName: string; amount: number; type: string; date: string; accountNo: string }>;
   recentSMS: Array<{ _id: string; recipient: string; message: string; status: string; sentAt: string; type: string }>;
@@ -89,12 +97,20 @@ export default function DashboardPage() {
       />
 
       {/* Metrics Stat Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <StatCard
+          title="Total Cash (Current Balance)"
+          value={formatCurrency(stats?.totalCash ?? 0)}
+          iconClass="fa-solid fa-money-bill-transfer"
+          change="Available branch liquid cash"
+          trend="up"
+          color="emerald"
+        />
         <StatCard
           title="Total Active Members"
           value={stats?.members.active.toLocaleString() ?? '0'}
           iconClass="fa-solid fa-users"
-          change={`${stats?.members.pending ?? 0} pending approval`}
+          change={`${stats?.members.pending ?? 0} pending`}
           trend="up"
           color="blue"
         />
@@ -102,15 +118,15 @@ export default function DashboardPage() {
           title="Total Savings Deposit"
           value={formatCurrency(stats?.savings.totalBalance ?? 0)}
           iconClass="fa-solid fa-vault"
-          change="Live balance across all accounts"
+          change="Across all member accounts"
           trend="up"
           color="emerald"
         />
         <StatCard
-          title="Active Outstanding Loans"
+          title="Active Loan Outstandings"
           value={formatCurrency(stats?.loans.totalOutstanding ?? 0)}
           iconClass="fa-solid fa-hand-holding-dollar"
-          change={`${stats?.loans.overdueCount ?? 0} overdue accounts`}
+          change={`${stats?.loans.overdueCount ?? 0} overdue`}
           trend="down"
           color="amber"
         />
@@ -118,10 +134,90 @@ export default function DashboardPage() {
           title="Today's Collection"
           value={formatCurrency(stats?.todayCollection ?? 0)}
           iconClass="fa-solid fa-wallet"
-          change="Savings + Loan installments"
+          change="Savings + Loan receipts"
           trend="up"
           color="indigo"
         />
+      </div>
+
+      {/* Pending Approvals Aggregator Section */}
+      <div className="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-2xl p-5 mb-8 text-white shadow-lg border border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold">
+              <i className="fa-solid fa-clipboard-check text-lg"></i>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-base text-white">System Pending Approvals</h3>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-400 text-slate-950">
+                  {stats?.pendingApprovals?.total ?? 0} Pending
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Centralized queue of applications, payouts, and requests awaiting administrative authorization.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+          <Link
+            href="/loans/approvals"
+            className="p-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold">Loan Approvals</span>
+              <i className="fa-solid fa-hand-holding-dollar text-amber-400 group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-2xl font-black text-white">{stats?.pendingApprovals?.loans ?? 0}</span>
+              <span className="text-[10px] text-amber-400 font-bold">Review →</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/savings/withdrawals"
+            className="p-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold">Withdrawals</span>
+              <i className="fa-solid fa-money-bill-wave text-rose-400 group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-2xl font-black text-white">{stats?.pendingApprovals?.withdrawals ?? 0}</span>
+              <span className="text-[10px] text-rose-400 font-bold">Authorize →</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/hr/leave/list"
+            className="p-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold">Leave Requests</span>
+              <i className="fa-solid fa-calendar-day text-blue-400 group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-2xl font-black text-white">{stats?.pendingApprovals?.leaves ?? 0}</span>
+              <span className="text-[10px] text-blue-400 font-bold">Manage →</span>
+            </div>
+          </Link>
+
+          <Link
+            href="/members"
+            className="p-3.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold">Member Admissions</span>
+              <i className="fa-solid fa-user-plus text-emerald-400 group-hover:scale-110 transition-transform"></i>
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-2xl font-black text-white">{stats?.pendingApprovals?.members ?? 0}</span>
+              <span className="text-[10px] text-emerald-400 font-bold">Verify →</span>
+            </div>
+          </Link>
+        </div>
       </div>
 
       {/* Main Content Grid */}

@@ -6,6 +6,7 @@ export interface INominee {
   nid?: string;
   phone?: string;
   percentage: number;
+  picture?: string;
 }
 
 export interface IMember extends Document {
@@ -23,6 +24,7 @@ export interface IMember extends Document {
   joinDate: Date;
   address: string;
   photo?: string;
+  signature?: string;
   status: 'active' | 'inactive' | 'pending';
   totalDeposit: number;
   totalLoan: number;
@@ -37,6 +39,7 @@ const NomineeSchema = new Schema<INominee>({
   nid: String,
   phone: String,
   percentage: { type: Number, default: 100 },
+  picture: String,
 });
 
 const MemberSchema = new Schema<IMember>(
@@ -55,6 +58,7 @@ const MemberSchema = new Schema<IMember>(
     joinDate: { type: Date, default: Date.now },
     address: { type: String, default: '' },
     photo: String,
+    signature: String,
     status: {
       type: String,
       enum: ['active', 'inactive', 'pending'],

@@ -1,10 +1,23 @@
+export interface Nominee {
+  name: string;
+  relation: string;
+  nid?: string;
+  phone?: string;
+  percentage: number;
+  picture?: string;
+}
+
 export interface Member {
   id: string;
+  _id?: string;
   accountNo: string;
   name: string;
   fatherName: string;
   motherName: string;
+  spouseName?: string;
+  dateOfBirth?: string;
   mobile: string;
+  phone?: string;
   nid: string;
   category: string;
   branch: string;
@@ -12,22 +25,29 @@ export interface Member {
   status: 'active' | 'inactive' | 'pending';
   totalDeposit: number;
   totalLoan: number;
+  photo?: string;
   photoUrl?: string;
+  signature?: string;
   address?: string;
+  nominee?: Nominee;
 }
 
 export interface DepositAccount {
   id: string;
+  _id?: string;
   accountNo: string;
   memberName: string;
   memberId: string;
-  type: 'Daily Savings' | 'Monthly DPS' | 'Fixed Deposit (FDR)' | 'Share Capital';
+  type: string;
   amount: number;
   interestRate: number;
   termMonths?: number;
   openingDate: string;
   status: 'active' | 'matured' | 'closed';
   balance: number;
+  category?: string;
+  percentage?: number;
+  priority?: 'High' | 'Medium' | 'Low' | 'Normal';
 }
 
 export interface LoanAccount {

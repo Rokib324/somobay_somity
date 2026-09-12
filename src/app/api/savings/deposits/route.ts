@@ -50,17 +50,58 @@ export async function POST(req: NextRequest) {
     await connectDB();
     const body = await req.json();
 
+    if (!body.memberId || !body.type) {
+      return NextResponse.json({ error: 'Member and savings scheme type are required' }, { status: 400 });
+    }
+
+    // Share Account Prerequisite Check:
+    // If not opening a Share Capital account, verify the member already owns an active Share Capital account
+    if (body.type !== 'Share Capital') {
+      const hasShareAccount = await DepositAccount.findOne({
+        memberId: body.memberId,
+        type: { $regex: /share capital/i },
+        status: 'active',
+      });
+
+      if (!hasShareAccount) {
+        return NextResponse.json(
+          {
+            error:
+              'Share Account Required: Cooperative rules mandate that every member must possess an active Share Capital account before opening any other savings product. Please create a Share Capital account for this member first.',
+            requiresShareAccount: true,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const count = await DepositAccount.countDocuments();
-    const accountNo = `DEP-${(count + 101).toString().padStart(3, '0')}`;
+    const accountNo = `DEP-${(count + 101).toString().padStart(4, '0')}`;
+    const initialAmount = Number(body.amount) || 0;
 
     // Update member totalDeposit
-    if (body.memberId) {
+    if (body.memberId && initialAmount > 0) {
       await Member.findByIdAndUpdate(body.memberId, {
-        $inc: { totalDeposit: body.amount || 0 },
+        $inc: { totalDeposit: initialAmount },
       });
     }
 
-    const deposit = await DepositAccount.create({ ...body, accountNo });
+    const initialTransactions = initialAmount > 0 ? [{
+      date: new Date(),
+      type: 'deposit' as const,
+      amount: initialAmount,
+      balance: initialAmount,
+      reference: 'Opening Deposit',
+      notes: 'Initial opening installment credit',
+    }] : [];
+
+    const deposit = await DepositAccount.create({
+      ...body,
+      accountNo,
+      balance: initialAmount,
+      transactions: initialTransactions,
+    });
+
     return NextResponse.json(deposit, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to create deposit account';

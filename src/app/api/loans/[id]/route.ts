@@ -40,6 +40,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
       body.approvedBy = body.approvedBy || 'System';
     }
 
+    // Handle loan closing / early settlement
+    if (body.status === 'closed') {
+      const priorDue = loan.dueAmount || 0;
+      await Member.findByIdAndUpdate(loan.memberId, {
+        $inc: { totalLoan: -priorDue },
+      });
+      body.dueAmount = 0;
+      body.paidAmount = loan.totalAmount;
+    }
+
     Object.assign(loan, body);
     await loan.save();
 

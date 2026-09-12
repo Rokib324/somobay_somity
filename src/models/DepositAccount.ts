@@ -14,7 +14,7 @@ export interface IDepositAccount extends Document {
   accountNo: string;
   memberId: mongoose.Types.ObjectId;
   memberName: string;
-  type: 'Daily Savings' | 'Monthly DPS' | 'Fixed Deposit (FDR)' | 'Share Capital';
+  type: string;
   amount: number; // per installment or deposit amount
   interestRate: number;
   termMonths?: number;
@@ -24,6 +24,9 @@ export interface IDepositAccount extends Document {
   balance: number;
   transactions: ITransaction[];
   branch: string;
+  category?: string;
+  percentage?: number;
+  priority?: 'High' | 'Medium' | 'Low' | 'Normal';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,11 +48,10 @@ const DepositAccountSchema = new Schema<IDepositAccount>(
     memberName: { type: String, required: true },
     type: {
       type: String,
-      enum: ['Daily Savings', 'Monthly DPS', 'Fixed Deposit (FDR)', 'Share Capital'],
       required: true,
     },
     amount: { type: Number, required: true },
-    interestRate: { type: Number, required: true },
+    interestRate: { type: Number, required: true, default: 0 },
     termMonths: Number,
     openingDate: { type: Date, default: Date.now },
     maturityDate: Date,
@@ -57,6 +59,9 @@ const DepositAccountSchema = new Schema<IDepositAccount>(
     balance: { type: Number, default: 0 },
     transactions: [TransactionSchema],
     branch: { type: String, required: true },
+    category: { type: String, default: 'General' },
+    percentage: { type: Number, default: 0 },
+    priority: { type: String, enum: ['High', 'Medium', 'Low', 'Normal'], default: 'Normal' },
   },
   { timestamps: true }
 );
