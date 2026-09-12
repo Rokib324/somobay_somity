@@ -1,11 +1,12 @@
 'use client';
 
+import React, { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_TIER, ROLE_ICONS, ROLE_COLORS } from '@/lib/auth-shared';
 import type { UserRole } from '@/models/User';
 
-export default function UnauthorizedPage() {
+function UnauthorizedContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, logout } = useAuth();
@@ -99,5 +100,19 @@ export default function UnauthorizedPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function UnauthorizedPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      }
+    >
+      <UnauthorizedContent />
+    </Suspense>
   );
 }
