@@ -118,34 +118,29 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <DataTable
-          searchPlaceholder="Search by name, ID, or designation..."
-          onSearch={fetchEmployees}
-          columns={[
-            { header: 'Employee ID', accessor: 'empId', className: 'font-bold text-purple-600' },
-            { header: 'Full Name', accessor: 'name', className: 'font-semibold text-slate-900' },
-            { header: 'Designation', accessor: 'designation', className: 'text-slate-700' },
-            { header: 'Department', accessor: 'department', className: 'text-slate-500' },
-            { header: 'Phone', accessor: 'phone', className: 'text-slate-600' },
-            { header: 'Branch', accessor: 'branch', className: 'text-slate-500' },
-            { header: 'Monthly Salary', accessor: (item: Employee) => `৳ ${item.salary.toLocaleString()}`, className: 'font-bold text-emerald-700' },
-            {
-              header: 'Status',
-              accessor: (item: Employee) => (
-                <Badge variant={item.status === 'active' ? 'success' : item.status === 'on_leave' ? 'warning' : 'danger'}>
-                  {item.status.replace('_', ' ')}
-                </Badge>
-              ),
-            },
-          ]}
-          data={employees}
-        />
-      )}
+      <DataTable
+        searchPlaceholder="Search by name, ID, or designation..."
+        onSearch={fetchEmployees}
+        isLoading={loading}
+        columns={[
+          { header: 'Employee ID', accessor: 'empId', className: 'font-bold text-purple-600' },
+          { header: 'Full Name', accessor: 'name', className: 'font-semibold text-slate-900' },
+          { header: 'Designation', accessor: 'designation', className: 'text-slate-700' },
+          { header: 'Department', accessor: 'department', className: 'text-slate-500' },
+          { header: 'Phone', accessor: 'phone', className: 'text-slate-600' },
+          { header: 'Branch', accessor: 'branch', className: 'text-slate-500' },
+          { header: 'Monthly Salary', accessor: (item: Employee) => `৳ ${item.salary.toLocaleString()}`, className: 'font-bold text-emerald-700' },
+          {
+            header: 'Status',
+            accessor: (item: Employee) => (
+              <Badge variant={item.status === 'active' ? 'success' : item.status === 'on_leave' ? 'warning' : 'danger'}>
+                {item.status.replace('_', ' ')}
+              </Badge>
+            ),
+          },
+        ]}
+        data={employees}
+      />
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add New Employee"
         footer={

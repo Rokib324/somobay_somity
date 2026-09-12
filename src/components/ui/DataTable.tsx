@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export interface Column<T> {
   header: string;
@@ -16,6 +16,7 @@ export interface DataTableProps<T> {
   onAddClick?: () => void;
   addButtonText?: string;
   onSearch?: (query: string) => void; // server-side search callback
+  isLoading?: boolean;
 }
 
 // Accept both `id` and `_id` (MongoDB documents)
@@ -25,32 +26,46 @@ function getRowKey<T extends { id?: string | number; _id?: string }>(item: T, id
 
 export function DataTable<T extends { id?: string | number; _id?: string }>({
   columns,
-  data,
+  data = [],
   searchPlaceholder = 'Search records...',
   actions,
   onAddClick,
   addButtonText = 'Add New',
   onSearch,
+  isLoading = false,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
 
   // Client-side filter (when no onSearch callback provided)
   const filteredData = onSearch
     ? data
-    : data.filter((item) => {
+    : (data || []).filter((item) => {
         if (!search) return true;
         const strVal = JSON.stringify(item).toLowerCase();
         return strVal.includes(search.toLowerCase());
       });
 
-  // Debounced server-side search
+  // Keep a stable ref to the latest onSearch callback so it's never a useEffect dependency
+  const onSearchRef = useRef(onSearch);
   useEffect(() => {
-    if (!onSearch) return;
+    onSearchRef.current = onSearch;
+  });
+
+  // Debounced server-side search — only fires when the user actually types
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (!onSearchRef.current) return;
+
     const timer = setTimeout(() => {
-      onSearch(search);
-    }, 300);
+      onSearchRef.current?.(search);
+    }, 350);
+
     return () => clearTimeout(timer);
-  }, [search, onSearch]);
+  }, [search]);
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 card-shadow overflow-hidden">
@@ -63,8 +78,20 @@ export function DataTable<T extends { id?: string | number; _id?: string }>({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           />
+          {search && (
+            <button
+              onClick={() => {
+                setSearch('');
+                onSearchRef.current?.('');
+              }}
+              aria-label="Clear search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+            >
+              <i className="fa-solid fa-xmark text-xs"></i>
+            </button>
+          )}
         </div>
         {onAddClick && (
           <button
@@ -78,7 +105,7 @@ export function DataTable<T extends { id?: string | number; _id?: string }>({
       </div>
 
       {/* Table Element */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto relative min-h-[160px]">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
             <tr className="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[11px] tracking-wider">
@@ -91,7 +118,16 @@ export function DataTable<T extends { id?: string | number; _id?: string }>({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredData.length > 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={columns.length + (actions ? 1 : 0)} className="py-16 text-center text-slate-400">
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-xs text-slate-500 font-medium">Loading records...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : filteredData.length > 0 ? (
               filteredData.map((item, rowIdx) => (
                 <tr key={getRowKey(item, rowIdx)} className="hover:bg-slate-50/80 transition-colors">
                   {columns.map((col, colIdx) => (
@@ -106,7 +142,7 @@ export function DataTable<T extends { id?: string | number; _id?: string }>({
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="py-8 text-center text-slate-400">
+                <td colSpan={columns.length + (actions ? 1 : 0)} className="py-12 text-center text-slate-400">
                   <div className="flex flex-col items-center gap-2">
                     <i className="fa-regular fa-folder-open text-3xl text-slate-300"></i>
                     <span>No records found</span>

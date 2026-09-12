@@ -126,27 +126,22 @@ export default function DepositsPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <DataTable
-          searchPlaceholder="Search by account no or member name..."
-          onSearch={q => { setSearch(q); fetchDeposits(q); }}
-          columns={[
-            { header: 'Account No', accessor: 'accountNo', className: 'font-bold text-blue-600' },
-            { header: 'Member Name', accessor: 'memberName', className: 'font-semibold' },
-            { header: 'Type', accessor: (item: DepositAccount) => <Badge variant={(typeColors[item.type] || 'info') as 'info' | 'success' | 'warning' | 'danger' | 'purple'}>{item.type}</Badge> },
-            { header: 'Installment/Deposit', accessor: (item: DepositAccount) => `৳ ${item.amount.toLocaleString()}`, className: 'font-medium' },
-            { header: 'Interest Rate', accessor: (item: DepositAccount) => `${item.interestRate}%`, className: 'text-emerald-600 font-semibold' },
-            { header: 'Current Balance', accessor: (item: DepositAccount) => `৳ ${item.balance.toLocaleString()}`, className: 'font-bold text-emerald-700' },
-            { header: 'Branch', accessor: 'branch', className: 'text-slate-500' },
-            { header: 'Status', accessor: (item: DepositAccount) => <Badge variant={item.status === 'active' ? 'success' : 'warning'}>{item.status}</Badge> },
-          ]}
-          data={deposits}
-        />
-      )}
+      <DataTable
+        searchPlaceholder="Search by account no or member name..."
+        onSearch={q => { setSearch(q); fetchDeposits(q); }}
+        isLoading={loading}
+        columns={[
+          { header: 'Account No', accessor: 'accountNo', className: 'font-bold text-blue-600' },
+          { header: 'Member Name', accessor: 'memberName', className: 'font-semibold' },
+          { header: 'Type', accessor: (item: DepositAccount) => <Badge variant={(typeColors[item.type] || 'info') as 'info' | 'success' | 'warning' | 'danger' | 'purple'}>{item.type}</Badge> },
+          { header: 'Installment/Deposit', accessor: (item: DepositAccount) => `৳ ${item.amount.toLocaleString()}`, className: 'font-medium' },
+          { header: 'Interest Rate', accessor: (item: DepositAccount) => `${item.interestRate}%`, className: 'text-emerald-600 font-semibold' },
+          { header: 'Current Balance', accessor: (item: DepositAccount) => `৳ ${item.balance.toLocaleString()}`, className: 'font-bold text-emerald-700' },
+          { header: 'Branch', accessor: 'branch', className: 'text-slate-500' },
+          { header: 'Status', accessor: (item: DepositAccount) => <Badge variant={item.status === 'active' ? 'success' : 'warning'}>{item.status}</Badge> },
+        ]}
+        data={deposits}
+      />
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Open New Savings Account"
         footer={

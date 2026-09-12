@@ -107,8 +107,11 @@ export interface UserRole {
   id: string;
   name: string;
   email: string;
-  role: 'Super Admin' | 'Branch Manager' | 'Accountant' | 'Field Officer';
+  employeeId?: string;
+  role: 'Super Admin' | 'Branch Manager' | 'Operations In-Charge' | 'Teller' | 'Back-Office';
   branch: string;
-  status: 'Active' | 'Inactive';
+  status: 'Active' | 'Inactive' | 'Locked';
+  transactionLimit: number;
   lastLogin: string;
+  mustChangePassword: boolean;
 }

@@ -150,15 +150,11 @@ export default function LoansOverviewPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <DataTable
-          searchPlaceholder="Search Loan No, Member Name, or Product..."
-          onSearch={fetchLoans}
-          columns={[
+      <DataTable
+        searchPlaceholder="Search Loan No, Member Name, or Product..."
+        onSearch={fetchLoans}
+        isLoading={loading}
+        columns={[
             { header: 'Loan No', accessor: 'loanNo', className: 'font-bold text-blue-600' },
             { header: 'Borrower Member', accessor: 'memberName', className: 'font-semibold text-slate-900' },
             { header: 'Loan Product', accessor: 'productName', className: 'text-slate-600' },
@@ -186,7 +182,6 @@ export default function LoansOverviewPage() {
             </div>
           )}
         />
-      )}
 
       {/* New Loan Application Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="New Loan Application"

@@ -39,7 +39,7 @@ export default function MembersListPage() {
     status: 'active',
   });
 
-  const fetchMembers = useCallback(async (q = search, page = 1) => {
+  const fetchMembers = useCallback(async (q = '', page = 1) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ search: q, page: String(page), limit: '20' });
@@ -50,7 +50,7 @@ export default function MembersListPage() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, []);
 
   const fetchBranches = async () => {
     const res = await fetch('/api/settings/branches');
@@ -65,10 +65,13 @@ export default function MembersListPage() {
     fetchBranches();
   }, []);
 
-  const handleSearch = (q: string) => {
+  const handleSearch = useCallback((q: string) => {
     setSearch(q);
     fetchMembers(q, 1);
-  };
+  }, [fetchMembers]);
+
+  // Pagination uses current search value via closure ref
+  const handlePageChange = (page: number) => fetchMembers(search, page);
 
   const handleSave = async () => {
     if (!form.name || !form.mobile || !form.nid || !form.fatherName || !form.motherName) {
@@ -121,57 +124,50 @@ export default function MembersListPage() {
         }
       />
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <DataTable
+        searchPlaceholder="Search by Name, Account No, Mobile, NID..."
+        onSearch={handleSearch}
+        isLoading={loading}
+        columns={[
+          { header: 'Account No', accessor: 'accountNo', className: 'font-bold text-blue-600' },
+          { header: 'Member Name', accessor: 'name', className: 'font-semibold text-slate-900' },
+          { header: 'Mobile Number', accessor: 'mobile', className: 'text-slate-600' },
+          { header: 'NID Number', accessor: 'nid', className: 'text-slate-500 font-mono text-xs' },
+          { header: 'Category', accessor: 'category', className: 'text-slate-700 font-medium' },
+          { header: 'Branch', accessor: 'branch', className: 'text-slate-500' },
+          { header: 'Total Savings', accessor: (item: Member) => `৳ ${item.totalDeposit.toLocaleString()}`, className: 'font-bold text-emerald-600' },
+          {
+            header: 'Status',
+            accessor: (item: Member) => <Badge variant={item.status === 'active' ? 'success' : 'warning'}>{item.status}</Badge>,
+          },
+        ]}
+        data={members}
+        actions={(member: Member) => (
+          <Link
+            href={`/members/${member._id}`}
+            className="px-3 py-1 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 font-bold text-xs rounded-lg transition-colors inline-block"
+          >
+            View Details
+          </Link>
+        )}
+      />
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <div className="flex justify-center gap-2 mt-4">
+          {Array.from({ length: pagination.pages }, (_, i) => (
+            <button
+              key={i}
+              onClick={() => handlePageChange(i + 1)}
+              className={`px-3 py-1 rounded text-xs font-semibold ${pagination.page === i + 1 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            >
+              {i + 1}
+            </button>
+          ))}
         </div>
-      ) : (
-        <>
-          <DataTable
-            searchPlaceholder="Search by Name, Account No, Mobile, NID..."
-            onSearch={handleSearch}
-            columns={[
-              { header: 'Account No', accessor: 'accountNo', className: 'font-bold text-blue-600' },
-              { header: 'Member Name', accessor: 'name', className: 'font-semibold text-slate-900' },
-              { header: 'Mobile Number', accessor: 'mobile', className: 'text-slate-600' },
-              { header: 'NID Number', accessor: 'nid', className: 'text-slate-500 font-mono text-xs' },
-              { header: 'Category', accessor: 'category', className: 'text-slate-700 font-medium' },
-              { header: 'Branch', accessor: 'branch', className: 'text-slate-500' },
-              { header: 'Total Savings', accessor: (item: Member) => `৳ ${item.totalDeposit.toLocaleString()}`, className: 'font-bold text-emerald-600' },
-              {
-                header: 'Status',
-                accessor: (item: Member) => <Badge variant={item.status === 'active' ? 'success' : 'warning'}>{item.status}</Badge>,
-              },
-            ]}
-            data={members}
-            actions={(member: Member) => (
-              <Link
-                href={`/members/${member._id}`}
-                className="px-3 py-1 bg-slate-100 hover:bg-blue-50 text-blue-600 hover:text-blue-700 font-bold text-xs rounded-lg transition-colors inline-block"
-              >
-                View Details
-              </Link>
-            )}
-          />
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex justify-center gap-2 mt-4">
-              {Array.from({ length: pagination.pages }, (_, i) => (
-                <button
-                  key={i}
-                  onClick={() => fetchMembers(search, i + 1)}
-                  className={`px-3 py-1 rounded text-xs font-semibold ${pagination.page === i + 1 ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-slate-400 text-center mt-2">
-            Showing {members.length} of {pagination.total} members
-          </p>
-        </>
       )}
+      <p className="text-xs text-slate-400 text-center mt-2">
+        Showing {members.length} of {pagination.total} members
+      </p>
 
       {/* New Member Registration Modal */}
       <Modal

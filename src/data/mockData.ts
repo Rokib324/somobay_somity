@@ -228,7 +228,7 @@ export const mockBranches: Branch[] = [
 ];
 
 export const mockUsers: UserRole[] = [
-  { id: 'USR-1', name: 'Admin User', email: 'admin@somity.com', role: 'Super Admin', branch: 'Main Branch (Dhaka)', status: 'Active', lastLogin: '2026-08-23 12:30 PM' },
-  { id: 'USR-2', name: 'Tariqul Islam', email: 'tariqul@somity.com', role: 'Accountant', branch: 'Main Branch (Dhaka)', status: 'Active', lastLogin: '2026-08-23 11:15 AM' },
-  { id: 'USR-3', name: 'Mahmuda Begum', email: 'mahmuda@somity.com', role: 'Field Officer', branch: 'Uttara Branch', status: 'Active', lastLogin: '2026-08-23 09:40 AM' },
+  { id: 'USR-1', name: 'System Administrator', email: 'admin@somity.com', role: 'Super Admin', branch: 'Head Office (Dhaka)', status: 'Active', lastLogin: '2026-08-23 12:30 PM', transactionLimit: 0, mustChangePassword: false },
+  { id: 'USR-2', name: 'Rania Khatun', email: 'ops@somity.com', role: 'Operations In-Charge', branch: 'Head Office (Dhaka)', status: 'Active', lastLogin: '2026-08-23 11:15 AM', transactionLimit: 200000, mustChangePassword: false },
+  { id: 'USR-3', name: 'Sohel Rana', email: 'teller@somity.com', role: 'Teller', branch: 'Mirpur Branch', status: 'Active', lastLogin: '2026-08-23 09:40 AM', transactionLimit: 50000, mustChangePassword: false },
 ];

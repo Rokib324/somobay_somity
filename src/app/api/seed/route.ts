@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db';
 import Branch from '@/models/Branch';
 import User from '@/models/User';
@@ -31,12 +32,65 @@ export async function POST() {
       { code: 'MIR', name: 'Mirpur Branch', manager: 'Rezaul Karim', phone: '01700000004', address: 'Mirpur-10, Dhaka', status: 'active', totalMembers: 0 },
     ]);
 
-    // 2. Seed Users
+    // 2. Seed Users — one per role with properly hashed passwords
+    const salt = await bcrypt.genSalt(12);
+    const demoPassword = await bcrypt.hash('Demo@1234', salt);
     await User.insertMany([
-      { name: 'Super Admin', email: 'admin@somity.com', password: 'hashed_password', role: 'Super Admin', branch: 'Head Office (Dhaka)', status: 'Active' },
-      { name: 'Nasim Ahmed', email: 'nasim@somity.com', password: 'hashed_password', role: 'Branch Manager', branch: 'Uttara Branch', status: 'Active' },
-      { name: 'Rania Khatun', email: 'rania@somity.com', password: 'hashed_password', role: 'Accountant', branch: 'Head Office (Dhaka)', status: 'Active' },
-      { name: 'Sohel Rana', email: 'sohel@somity.com', password: 'hashed_password', role: 'Field Officer', branch: 'Mirpur Branch', status: 'Active' },
+      {
+        name: 'System Administrator',
+        email: 'admin@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-SA-001',
+        role: 'Super Admin',
+        branch: 'Head Office (Dhaka)',
+        status: 'Active',
+        transactionLimit: 0,
+        mustChangePassword: false,
+      },
+      {
+        name: 'Nasim Ahmed',
+        email: 'manager@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-BM-002',
+        role: 'Branch Manager',
+        branch: 'Uttara Branch',
+        status: 'Active',
+        transactionLimit: 0,
+        mustChangePassword: false,
+      },
+      {
+        name: 'Rania Khatun',
+        email: 'ops@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-OI-003',
+        role: 'Operations In-Charge',
+        branch: 'Head Office (Dhaka)',
+        status: 'Active',
+        transactionLimit: 200000,
+        mustChangePassword: false,
+      },
+      {
+        name: 'Sohel Rana',
+        email: 'teller@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-TL-004',
+        role: 'Teller',
+        branch: 'Mirpur Branch',
+        status: 'Active',
+        transactionLimit: 50000,
+        mustChangePassword: true,
+      },
+      {
+        name: 'Farida Begum',
+        email: 'compliance@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-BO-005',
+        role: 'Back-Office',
+        branch: 'Gulshan Branch',
+        status: 'Active',
+        transactionLimit: 0,
+        mustChangePassword: false,
+      },
     ]);
 
     // 3. Seed Members
