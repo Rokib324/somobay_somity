@@ -49,12 +49,6 @@ export const Header: React.FC<{ toggleSidebar: () => void }> = ({ toggleSidebar 
           </div>
         )}
 
-        {/* Quick Action */}
-        <Link href="/savings/create"
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200 transition-colors">
-          <i className="fa-solid fa-user-plus text-xs"></i>New Member
-        </Link>
-
         {/* Dedicated Message Icon */}
         <Link
           href="/sms/history"

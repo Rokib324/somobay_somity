@@ -281,8 +281,12 @@ export function MemberIdCardModal({ isOpen, onClose, member }: MemberIdCardModal
             {/* Footer Signatures */}
             <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-between items-end text-[9px] text-slate-500">
               <div className="text-center">
-                <div className="h-6 border-b border-slate-400 w-20 mb-0.5 flex items-center justify-center font-cursive italic text-[10px] text-blue-900">
-                  {member.signature ? 'Signed' : member.name.split(' ')[0]}
+                <div className="h-7 border-b border-slate-400 w-24 mb-0.5 flex items-center justify-center overflow-hidden">
+                  {member.signature ? (
+                    <img src={member.signature} alt="Member Signature" className="max-h-6 max-w-full object-contain" />
+                  ) : (
+                    <span className="font-serif italic text-[11px] text-blue-900">{member.name.split(' ')[0]}</span>
+                  )}
                 </div>
                 <span>Member Signature</span>
               </div>

@@ -5,6 +5,25 @@ export interface Nominee {
   phone?: string;
   percentage: number;
   picture?: string;
+  photo?: string;
+  signature?: string;
+  dateOfBirth?: string;
+  address?: string;
+  occupation?: string;
+  fatherOrHusbandName?: string;
+}
+
+export interface Guarantor {
+  accountNo?: string;
+  name: string;
+  relation?: string;
+  nid?: string;
+  phone?: string;
+  address?: string;
+  occupation?: string;
+  photo?: string;
+  signature?: string;
+  status?: string;
 }
 
 export interface Member {
@@ -30,6 +49,7 @@ export interface Member {
   signature?: string;
   address?: string;
   nominee?: Nominee;
+  guarantor?: Guarantor;
 }
 
 export interface DepositAccount {
@@ -52,6 +72,7 @@ export interface DepositAccount {
 
 export interface LoanAccount {
   id: string;
+  _id?: string;
   loanNo: string;
   memberName: string;
   memberId: string;
@@ -64,7 +85,18 @@ export interface LoanAccount {
   installments: number;
   installmentType: 'Daily' | 'Weekly' | 'Monthly';
   disbursementDate: string;
-  status: 'active' | 'pending_approval' | 'disbursed' | 'closed' | 'overdue';
+  applicationDate?: string;
+  status: 'active' | 'pending_approval' | 'disbursed' | 'closed' | 'overdue' | string;
+  branch?: string;
+  purpose?: string;
+  guarantorMemberId?: string;
+  guarantorAccountNo?: string;
+  guarantorName?: string;
+  guarantorNid?: string;
+  guarantorPhone?: string;
+  guarantorRelation?: string;
+  guarantorPhoto?: string;
+  guarantorSignature?: string;
 }
 
 export interface AccountHead {

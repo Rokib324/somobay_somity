@@ -33,9 +33,14 @@ export interface ILoanAccount extends Document {
   disbursedBy?: string;
   branch: string;
   purpose?: string;
+  guarantorMemberId?: mongoose.Types.ObjectId;
+  guarantorAccountNo?: string;
   guarantorName?: string;
   guarantorNid?: string;
   guarantorPhone?: string;
+  guarantorRelation?: string;
+  guarantorPhoto?: string;
+  guarantorSignature?: string;
   schedule: IInstallment[];
   createdAt: Date;
   updatedAt: Date;
@@ -87,9 +92,14 @@ const LoanAccountSchema = new Schema<ILoanAccount>(
     disbursedBy: String,
     branch: { type: String, required: true },
     purpose: String,
+    guarantorMemberId: { type: Schema.Types.ObjectId, ref: 'Member' },
+    guarantorAccountNo: String,
     guarantorName: String,
     guarantorNid: String,
     guarantorPhone: String,
+    guarantorRelation: String,
+    guarantorPhoto: String,
+    guarantorSignature: String,
     schedule: [InstallmentSchema],
   },
   { timestamps: true }
@@ -97,6 +107,7 @@ const LoanAccountSchema = new Schema<ILoanAccount>(
 
 LoanAccountSchema.index({ memberName: 'text', loanNo: 'text' });
 
+delete (mongoose.models as Record<string, unknown>).LoanAccount;
 const LoanAccount: Model<ILoanAccount> =
   mongoose.models.LoanAccount ||
   mongoose.model<ILoanAccount>('LoanAccount', LoanAccountSchema);

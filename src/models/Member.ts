@@ -7,6 +7,25 @@ export interface INominee {
   phone?: string;
   percentage: number;
   picture?: string;
+  photo?: string;
+  signature?: string;
+  dateOfBirth?: Date | string;
+  address?: string;
+  occupation?: string;
+  fatherOrHusbandName?: string;
+}
+
+export interface IGuarantor {
+  accountNo?: string;
+  name: string;
+  relation?: string;
+  nid?: string;
+  phone?: string;
+  address?: string;
+  occupation?: string;
+  photo?: string;
+  signature?: string;
+  status?: string;
 }
 
 export interface IMember extends Document {
@@ -29,6 +48,7 @@ export interface IMember extends Document {
   totalDeposit: number;
   totalLoan: number;
   nominee?: INominee;
+  guarantor?: IGuarantor;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +60,25 @@ const NomineeSchema = new Schema<INominee>({
   phone: String,
   percentage: { type: Number, default: 100 },
   picture: String,
+  photo: String,
+  signature: String,
+  dateOfBirth: Date,
+  address: String,
+  occupation: String,
+  fatherOrHusbandName: String,
+});
+
+const GuarantorSchema = new Schema<IGuarantor>({
+  accountNo: String,
+  name: { type: String, required: true },
+  relation: String,
+  nid: String,
+  phone: String,
+  address: String,
+  occupation: String,
+  photo: String,
+  signature: String,
+  status: { type: String, default: 'active' },
 });
 
 const MemberSchema = new Schema<IMember>(
@@ -67,12 +106,14 @@ const MemberSchema = new Schema<IMember>(
     totalDeposit: { type: Number, default: 0 },
     totalLoan: { type: Number, default: 0 },
     nominee: NomineeSchema,
+    guarantor: GuarantorSchema,
   },
   { timestamps: true }
 );
 
 MemberSchema.index({ name: 'text', accountNo: 'text', mobile: 'text', nid: 'text' });
 
+delete (mongoose.models as Record<string, unknown>).Member;
 const Member: Model<IMember> =
   mongoose.models.Member || mongoose.model<IMember>('Member', MemberSchema);
 
