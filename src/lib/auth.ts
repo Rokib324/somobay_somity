@@ -111,3 +111,35 @@ export async function requireRole(
 
   return user;
 }
+
+/**
+ * Assert that the requesting user is the Chairman (or legacy Super Admin).
+ * The ONLY role allowed to manage, assign, or distribute roles to other users.
+ * Returns a strict 403 Forbidden for ALL other roles with a clear message.
+ */
+export async function requireChairman(req: NextRequest): Promise<SessionUser> {
+  const user = await getSessionUserFromRequest(req);
+
+  if (!user) {
+    throw NextResponse.json(
+      { error: 'Unauthorized — authentication required.' },
+      { status: 401 }
+    );
+  }
+
+  const isAdmin = user.role === 'Chairman' || user.role === 'Super Admin';
+  if (!isAdmin) {
+    throw NextResponse.json(
+      {
+        error: 'Forbidden — Only the Chairman can perform role and privilege management operations.',
+        requiredRole: 'Chairman',
+        yourRole: user.role,
+        code: 'CHAIRMAN_ONLY',
+      },
+      { status: 403 }
+    );
+  }
+
+  return user;
+}
+

@@ -167,6 +167,7 @@ export async function POST(req: NextRequest) {
       branch: user.branch,
       transactionLimit: user.transactionLimit,
       permissions: Array.from(user.permissions || []),
+      menuPrivileges: Array.from(user.menuPrivileges || []),
       mustChangePassword: Boolean(user.mustChangePassword),
     };
 

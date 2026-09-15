@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db';
 import Branch from '@/models/Branch';
 import User from '@/models/User';
+import RolePrivilege from '@/models/RolePrivilege';
+import { DEFAULT_ROLE_SLUGS } from '@/lib/permissions';
 import Member from '@/models/Member';
 import DepositAccount from '@/models/DepositAccount';
 import LoanProduct from '@/models/LoanProduct';
@@ -18,10 +20,19 @@ export async function POST() {
   try {
     await connectDB();
 
+    // Ensure RolePrivileges are always seeded / upserted even if members already exist
+    for (const [role, slugs] of Object.entries(DEFAULT_ROLE_SLUGS)) {
+      await RolePrivilege.findOneAndUpdate(
+        { role },
+        { $setOnInsert: { role, menuSlugs: slugs } },
+        { upsert: true, new: true }
+      );
+    }
+
     // Check if already seeded
     const memberCount = await Member.countDocuments();
     if (memberCount > 0) {
-      return NextResponse.json({ message: 'Database already seeded', count: memberCount });
+      return NextResponse.json({ message: 'Database already seeded (Role privileges updated)', count: memberCount });
     }
 
     // 1. Seed Branches
@@ -32,10 +43,78 @@ export async function POST() {
       { code: 'MIR', name: 'Mirpur Branch', manager: 'Rezaul Karim', phone: '01700000004', address: 'Mirpur-10, Dhaka', status: 'active', totalMembers: 0 },
     ]);
 
-    // 2. Seed Users — one per role with properly hashed passwords
+    // 2. Seed Users — both cooperative and legacy roles with properly hashed passwords
     const salt = await bcrypt.genSalt(12);
     const demoPassword = await bcrypt.hash('Demo@1234', salt);
     await User.insertMany([
+      // ── Cooperative Roles ──
+      {
+        name: 'Al-Haj Abdul Matin',
+        email: 'chairman@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-CH-001',
+        role: 'Chairman',
+        branch: 'Head Office (Dhaka)',
+        status: 'Active',
+        transactionLimit: 0,
+        mustChangePassword: false,
+      },
+      {
+        name: 'Mahbubur Rahman',
+        email: 'vicechairman@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-VC-002',
+        role: 'Vice Chairman',
+        branch: 'Head Office (Dhaka)',
+        status: 'Active',
+        transactionLimit: 0,
+        mustChangePassword: false,
+      },
+      {
+        name: 'Golam Sarwar',
+        email: 'secretary@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-SEC-003',
+        role: 'Secretary',
+        branch: 'Head Office (Dhaka)',
+        status: 'Active',
+        transactionLimit: 500000,
+        mustChangePassword: false,
+      },
+      {
+        name: 'Anisul Haque',
+        email: 'treasurer@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-TR-004',
+        role: 'Treasurer',
+        branch: 'Head Office (Dhaka)',
+        status: 'Active',
+        transactionLimit: 1000000,
+        mustChangePassword: false,
+      },
+      {
+        name: 'Kazi Nazmul',
+        email: 'officer@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-OF-005',
+        role: 'Officer',
+        branch: 'Uttara Branch',
+        status: 'Active',
+        transactionLimit: 100000,
+        mustChangePassword: false,
+      },
+      {
+        name: 'Shafiqul Islam',
+        email: 'field@somity.com',
+        password: demoPassword,
+        employeeId: 'EMP-FE-006',
+        role: 'Field Employee',
+        branch: 'Mirpur Branch',
+        status: 'Active',
+        transactionLimit: 25000,
+        mustChangePassword: false,
+      },
+      // ── Legacy Roles ──
       {
         name: 'System Administrator',
         email: 'admin@somity.com',

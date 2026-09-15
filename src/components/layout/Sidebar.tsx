@@ -4,9 +4,8 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { ROLE_ICONS, ROLE_COLORS } from '@/lib/auth-shared';
+import { ROLE_ICONS, ROLE_COLORS, type UserRole } from '@/lib/auth-shared';
 import { getVisibleNavItems, getVisibleSubItems } from '@/lib/permissions';
-import type { UserRole } from '@/models/User';
 
 interface NavItem {
   label: string;
@@ -224,15 +223,20 @@ function getInitials(name: string): string {
 
 export const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void }> = ({ isOpen, toggleSidebar }) => {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, authorizedMenus } = useAuth();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => getInitialOpenMenus(pathname));
 
   const navContainerRef = useRef<HTMLDivElement | null>(null);
   const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
 
+  // Use dynamic authorized menus from server if loaded; fallback to static role filter
+  const navGroups = (authorizedMenus && authorizedMenus.length > 0)
+    ? authorizedMenus
+    : (user ? filterNavGroups(user.role) : []);
+
   // Automatically keep parent menu open if active path is in its submenu
   useEffect(() => {
-    for (const group of ALL_NAV_GROUPS) {
+    for (const group of navGroups) {
       for (const item of group.items) {
         if (item.submenu?.some(s => s.href === pathname || (s.href !== '/' && pathname.startsWith(s.href)))) {
           setOpenMenus(prev => {
@@ -245,7 +249,7 @@ export const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void }> =
         }
       }
     }
-  }, [pathname]);
+  }, [pathname, navGroups]);
 
   // Callback ref to restore scroll immediately on DOM attachment (prevents visual jump)
   const setNavContainerRef = useCallback((node: HTMLDivElement | null) => {
@@ -303,7 +307,6 @@ export const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void }> =
     });
   };
 
-  const navGroups = user ? filterNavGroups(user.role) : [];
   const roleIcon = user ? ROLE_ICONS[user.role] : 'fa-user';
   const roleColor = user ? ROLE_COLORS[user.role] : '';
 
