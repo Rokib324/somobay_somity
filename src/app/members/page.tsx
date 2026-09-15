@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { MemberIdCardModal } from '@/components/members/MemberIdCardModal';
 import { BlankRegistrationFormModal } from '@/components/members/BlankRegistrationFormModal';
+import { ImageUploadBox } from '@/components/common/ImageUploadBox';
 import Link from 'next/link';
 
 interface Member {
@@ -447,15 +448,21 @@ export default function MembersListPage() {
           <div className="font-bold text-slate-900 border-b border-slate-100 pb-1 text-[11px] uppercase tracking-wide pt-2">
             3. Biometrics & Verification
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Member Photo URL (Optional)</label>
-              <input type="text" placeholder="https://..." className={inputClass} value={form.photo} onChange={e => setForm(f => ({ ...f, photo: e.target.value }))} />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Signature Specimen (Optional URL)</label>
-              <input type="text" placeholder="https://..." className={inputClass} value={form.signature} onChange={e => setForm(f => ({ ...f, signature: e.target.value }))} />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <ImageUploadBox
+              label="Member Photograph"
+              value={form.photo}
+              onChange={val => setForm(f => ({ ...f, photo: val }))}
+              aspectRatio="square"
+              helperText="Upload member portrait photo."
+            />
+            <ImageUploadBox
+              label="Specimen Signature"
+              value={form.signature}
+              onChange={val => setForm(f => ({ ...f, signature: val }))}
+              aspectRatio="signature"
+              helperText="Upload member specimen signature."
+            />
           </div>
         </div>
       </Modal>

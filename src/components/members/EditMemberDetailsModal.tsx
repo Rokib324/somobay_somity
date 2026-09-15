@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { ImageUploadBox } from '@/components/common/ImageUploadBox';
 import { Member, Nominee, Guarantor } from '@/types';
 
 interface EditMemberDetailsModalProps {
@@ -145,46 +146,21 @@ export function EditMemberDetailsModal({
         {activeTab === 'profile' && (
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Member Profile Photo URL</label>
-                <input
-                  type="text"
-                  placeholder="https://images.unsplash.com/... or data:image/..."
-                  value={photo}
-                  onChange={e => setPhoto(e.target.value)}
-                  className={inputClass}
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  High-resolution portrait photo URL. Leave empty to use default avatar.
-                </p>
+              <ImageUploadBox
+                label="Member Profile Photo"
+                value={photo}
+                onChange={setPhoto}
+                aspectRatio="square"
+                helperText="Upload a portrait photo file from your device (PNG, JPG, WEBP)."
+              />
 
-                {photo && (
-                  <div className="mt-2 flex items-center gap-3 p-2 bg-slate-50 rounded-lg border border-slate-200">
-                    <img src={photo} alt="Preview" className="w-12 h-12 rounded-full object-cover border" />
-                    <span className="text-[11px] text-emerald-600 font-semibold">Photo Loaded Successfully</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className={labelClass}>Member Signature Image URL</label>
-                <input
-                  type="text"
-                  placeholder="https://... or data:image/png;base64,... or svg"
-                  value={signature}
-                  onChange={e => setSignature(e.target.value)}
-                  className={inputClass}
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Official specimen signature image or clean scan transparent PNG.
-                </p>
-
-                {signature && (
-                  <div className="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-200 h-14 flex items-center justify-center">
-                    <img src={signature} alt="Signature Preview" className="max-h-full object-contain" />
-                  </div>
-                )}
-              </div>
+              <ImageUploadBox
+                label="Member Specimen Signature"
+                value={signature}
+                onChange={setSignature}
+                aspectRatio="signature"
+                helperText="Upload an official specimen signature file or scan."
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
@@ -292,28 +268,6 @@ export function EditMemberDetailsModal({
               </div>
 
               <div>
-                <label className={labelClass}>Nominee Passport Size Photo URL</label>
-                <input
-                  type="text"
-                  value={nominee.photo || ''}
-                  onChange={e => setNominee({ ...nominee, photo: e.target.value, picture: e.target.value })}
-                  placeholder="Photo image URL"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Nominee Specimen Signature URL</label>
-                <input
-                  type="text"
-                  value={nominee.signature || ''}
-                  onChange={e => setNominee({ ...nominee, signature: e.target.value })}
-                  placeholder="Signature image URL"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
                 <label className={labelClass}>Occupation / Profession</label>
                 <input
                   type="text"
@@ -334,6 +288,22 @@ export function EditMemberDetailsModal({
                   className={inputClass}
                 />
               </div>
+
+              <ImageUploadBox
+                label="Nominee Passport Size Photo"
+                value={nominee.photo || nominee.picture}
+                onChange={val => setNominee(n => ({ ...n, photo: val, picture: val }))}
+                aspectRatio="passport"
+                helperText="Upload passport size photograph (35x45mm)."
+              />
+
+              <ImageUploadBox
+                label="Nominee Specimen Signature"
+                value={nominee.signature || ''}
+                onChange={val => setNominee(n => ({ ...n, signature: val }))}
+                aspectRatio="signature"
+                helperText="Upload official signature file of the nominee."
+              />
             </div>
           </div>
         )}
@@ -417,28 +387,6 @@ export function EditMemberDetailsModal({
                 />
               </div>
 
-              <div>
-                <label className={labelClass}>Passport Size Photo URL</label>
-                <input
-                  type="text"
-                  value={guarantor.photo || ''}
-                  onChange={e => setGuarantor({ ...guarantor, photo: e.target.value })}
-                  placeholder="Photo image URL"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Specimen Signature URL</label>
-                <input
-                  type="text"
-                  value={guarantor.signature || ''}
-                  onChange={e => setGuarantor({ ...guarantor, signature: e.target.value })}
-                  placeholder="Signature image URL"
-                  className={inputClass}
-                />
-              </div>
-
               <div className="md:col-span-2">
                 <label className={labelClass}>Guarantor Residential Address</label>
                 <input
@@ -449,6 +397,22 @@ export function EditMemberDetailsModal({
                   className={inputClass}
                 />
               </div>
+
+              <ImageUploadBox
+                label="Guarantor Passport Size Photo"
+                value={guarantor.photo || ''}
+                onChange={val => setGuarantor(g => ({ ...g, photo: val }))}
+                aspectRatio="passport"
+                helperText="Upload passport size photograph (35x45mm)."
+              />
+
+              <ImageUploadBox
+                label="Guarantor Specimen Signature"
+                value={guarantor.signature || ''}
+                onChange={val => setGuarantor(g => ({ ...g, signature: val }))}
+                aspectRatio="signature"
+                helperText="Upload official signature file of the personal guarantor."
+              />
             </div>
           </div>
         )}
