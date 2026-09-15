@@ -83,6 +83,7 @@ export interface LoanAccount {
   paidAmount: number;
   dueAmount: number;
   installments: number;
+  installmentAmount?: number;
   installmentType: 'Daily' | 'Weekly' | 'Monthly';
   disbursementDate: string;
   applicationDate?: string;
@@ -97,6 +98,20 @@ export interface LoanAccount {
   guarantorRelation?: string;
   guarantorPhoto?: string;
   guarantorSignature?: string;
+  schedule?: LoanInstallment[];
+}
+
+export interface LoanInstallment {
+  _id?: string;
+  installmentNo?: number;
+  dueDate: string;
+  principal?: number;
+  interest?: number;
+  total?: number;
+  amount?: number;
+  paidAmount?: number;
+  paidDate?: string;
+  status: 'pending' | 'paid' | 'overdue' | 'partial' | string;
 }
 
 export interface AccountHead {

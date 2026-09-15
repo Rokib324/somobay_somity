@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { MemberIdCardModal } from '@/components/members/MemberIdCardModal';
 import { EditMemberDetailsModal } from '@/components/members/EditMemberDetailsModal';
 import { SignatureBox } from '@/components/common/SignatureBox';
+import { MemberFinancialDisciplineSection } from '@/components/members/MemberFinancialDisciplineSection';
 import { Member, DepositAccount, LoanAccount } from '@/types';
 import { use } from 'react';
 import Link from 'next/link';
@@ -681,6 +682,14 @@ export default function MemberDetailsPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
           )}
+
+          {/* Member Financial Discipline & Repayment History Section */}
+          <MemberFinancialDisciplineSection
+            loans={loans}
+            memberName={member.name}
+            memberAccountNo={member.accountNo}
+            memberBranch={member.branch}
+          />
 
           {/* Section 3: "Guarantor to the Accounts" Section */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 card-shadow space-y-4">
