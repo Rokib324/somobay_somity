@@ -44,6 +44,11 @@ export interface NavGroup {
 export const MENU_CATALOG: MenuCatalogItem[] = [
   // ── Core ──────────────────────────────────────────────────────────────────
   { slug: 'dashboard',             label: 'Dashboard',             href: '/dashboard',                    icon: 'fa-solid fa-chart-line',          group: 'CORE OPERATIVE',          order: 1 },
+  { slug: 'approvals',              label: 'Approvals',             href: '/approvals',                    icon: 'fa-solid fa-clipboard-check',     group: 'CORE OPERATIVE',          order: 2 },
+  { slug: 'approvals-queue',        label: 'My Action Queue',       href: '/approvals',                    parentSlug: 'approvals',                 group: 'CORE OPERATIVE',          order: 1 },
+  { slug: 'approvals-members',      label: 'Member Approvals',      href: '/approvals?tab=members',        parentSlug: 'approvals',                 group: 'CORE OPERATIVE',          order: 2 },
+  { slug: 'approvals-transactions', label: 'Transaction Approvals', href: '/approvals?tab=transactions',   parentSlug: 'approvals',                 group: 'CORE OPERATIVE',          order: 3 },
+  { slug: 'approvals-history',      label: 'Approval History',      href: '/approvals?tab=history',        parentSlug: 'approvals',                 group: 'CORE OPERATIVE',          order: 4 },
 
   // ── Accounts ──────────────────────────────────────────────────────────────
   { slug: 'accounts',              label: 'Accounts',              href: '/accounts',                     icon: 'fa-solid fa-scale-balanced',      group: 'ACCOUNTS MODULE',         order: 1 },
@@ -128,6 +133,7 @@ export const DEFAULT_ROLE_SLUGS: Record<string, string[]> = {
 
   'Secretary': [
     'dashboard',
+    'approvals', 'approvals-queue', 'approvals-members', 'approvals-transactions', 'approvals-history',
     'members', 'members-list', 'members-categories', 'members-transfers',
     'loans', 'loans-list', 'loans-products', 'loans-apply', 'loans-approvals',
     'loans-schedules', 'loans-closing', 'loans-interest',
@@ -277,6 +283,8 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { pattern: /^\/api\/seed/,             minRole: 'Chairman',           description: 'Database seeding' },
   { pattern: /^\/loans\/disbursement/,   minRole: 'Vice Chairman',      description: 'Loan disbursement' },
   { pattern: /^\/accounts\/profit-loss/, minRole: 'Treasurer',          description: 'P&L report' },
+  { pattern: /^\/approvals/,             minRole: 'Secretary',          description: 'Executive approvals workflow' },
+  { pattern: /^\/api\/approvals/,        minRole: 'Secretary',          description: 'Executive approvals API' },
   { pattern: /^\/loans\/approvals/,      minRole: 'Secretary',          description: 'Loan approvals' },
   { pattern: /^\/hr\/payroll/,           minRole: 'Secretary',          description: 'Payroll management' },
   { pattern: /^\/dashboard/,            minRole: 'Field Employee',     description: 'Dashboard' },

@@ -4,6 +4,7 @@ import WithdrawalRequest from '@/models/WithdrawalRequest';
 import DepositAccount from '@/models/DepositAccount';
 import Member from '@/models/Member';
 import Collection from '@/models/Collection';
+import Approval from '@/models/Approval';
 
 export async function GET(req: NextRequest) {
   try {
@@ -83,6 +84,40 @@ export async function POST(req: NextRequest) {
       branch: member.branch || 'Main Branch',
       status: 'Pending',
     });
+
+    // Create Approval record for executive workflow
+    try {
+      const appCount = await Approval.countDocuments();
+      const approvalNo = `APP-${new Date().getFullYear()}-${(appCount + 1001).toString().padStart(4, '0')}`;
+      await Approval.create({
+        approvalNo,
+        type: 'withdrawal',
+        title: `Savings Withdrawal: ৳ ${withdrawAmt.toLocaleString()} (${member.name})`,
+        description: `Account: ${account.accountNo} (${account.type}) | Reason: ${reason || 'Savings encashment'}`,
+        entityId: request._id,
+        entityModel: 'WithdrawalRequest',
+        referenceNo: requestNo,
+        memberId: member._id,
+        memberName: member.name,
+        memberAccountNo: member.accountNo,
+        amount: withdrawAmt,
+        branch: member.branch || 'Main Branch',
+        status: 'pending',
+        currentStage: 'secretary',
+        steps: [],
+        submittedBy: appliedBy || 'Teller Staff',
+        submittedAt: new Date(),
+        metadata: {
+          accountNo: account.accountNo,
+          schemeType: account.type,
+          availableBalance: account.balance,
+          amount: withdrawAmt,
+          reason,
+        },
+      });
+    } catch (appErr) {
+      console.error('Failed to create Approval record for withdrawal:', appErr);
+    }
 
     return NextResponse.json(request, { status: 201 });
   } catch (error: unknown) {

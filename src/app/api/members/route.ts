@@ -49,6 +49,8 @@ export async function GET(req: NextRequest) {
   }
 }
 
+import Approval from '@/models/Approval';
+
 // POST /api/members — Register new member
 export async function POST(req: NextRequest) {
   try {
@@ -59,7 +61,47 @@ export async function POST(req: NextRequest) {
     const count = await Member.countDocuments();
     const accountNo = `AC-${(count + 1001).toString().padStart(4, '0')}`;
 
-    const member = await Member.create({ ...body, accountNo });
+    // New members enter with status 'pending' awaiting executive approval
+    const member = await Member.create({
+      ...body,
+      accountNo,
+      status: body.status === 'active' ? 'pending' : (body.status || 'pending'),
+    });
+
+    // Create Approval record for Secretary review
+    try {
+      const appCount = await Approval.countDocuments();
+      const approvalNo = `APP-${new Date().getFullYear()}-${(appCount + 1001).toString().padStart(4, '0')}`;
+      await Approval.create({
+        approvalNo,
+        type: 'member',
+        title: `New Member Registration: ${member.name}`,
+        description: `Category: ${member.category} | Branch: ${member.branch || 'Main Branch'}`,
+        entityId: member._id,
+        entityModel: 'Member',
+        referenceNo: member.accountNo,
+        memberId: member._id,
+        memberName: member.name,
+        memberAccountNo: member.accountNo,
+        branch: member.branch || 'Main Branch',
+        status: 'pending',
+        currentStage: 'secretary',
+        steps: [],
+        submittedBy: body.appliedBy || 'Registration Desk',
+        submittedAt: new Date(),
+        metadata: {
+          mobile: member.mobile,
+          nid: member.nid,
+          fatherName: member.fatherName,
+          motherName: member.motherName,
+          category: member.category,
+          address: member.address,
+        },
+      });
+    } catch (appErr) {
+      console.error('Failed to create Approval record for new member:', appErr);
+    }
+
     return NextResponse.json(member, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to create member';

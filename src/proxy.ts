@@ -43,6 +43,8 @@ const ROUTE_MIN_TIERS: Array<{ pattern: RegExp; minTier: number; minRole: string
   { pattern: /^\/api\/loans\/disbursement/,minTier: 8,  minRole: 'Vice Chairman' },
 
   // Secretary and above (was Operations In-Charge in legacy)
+  { pattern: /^\/approvals/,              minTier: 6,  minRole: 'Secretary' },
+  { pattern: /^\/api\/approvals/,         minTier: 6,  minRole: 'Secretary' },
   { pattern: /^\/loans\/approvals/,       minTier: 6,  minRole: 'Secretary' },
   { pattern: /^\/hr\/payroll/,            minTier: 6,  minRole: 'Secretary' },
   { pattern: /^\/hr\/shifts/,             minTier: 6,  minRole: 'Secretary' },

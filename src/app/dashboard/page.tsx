@@ -159,6 +159,13 @@ export default function DashboardPage() {
               </p>
             </div>
           </div>
+          <Link
+            href="/approvals"
+            className="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5 self-start sm:self-center"
+          >
+            <i className="fa-solid fa-stamp text-xs" />
+            <span>Executive Approvals Hub →</span>
+          </Link>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">

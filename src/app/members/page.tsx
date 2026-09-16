@@ -50,7 +50,7 @@ export default function MembersListPage() {
   const [form, setForm] = useState({
     name: '', mobile: '', fatherName: '', motherName: '',
     nid: '', address: '', category: 'Cooperative Member', branch: '',
-    dateOfBirth: '', status: 'active',
+    dateOfBirth: '', status: 'pending',
     nomineeName: '', nomineeRelation: 'Spouse', nomineeNid: '', nomineePhone: '', nomineePercentage: 100,
     photo: '', signature: '',
   });
@@ -216,7 +216,7 @@ export default function MembersListPage() {
       setForm({
         name: '', mobile: '', fatherName: '', motherName: '',
         nid: '', address: '', category: 'Cooperative Member', branch: branches[0] || '',
-        dateOfBirth: '', status: 'active',
+        dateOfBirth: '', status: 'pending',
         nomineeName: '', nomineeRelation: 'Spouse', nomineeNid: '', nomineePhone: '', nomineePercentage: 100,
         photo: '', signature: '',
       });

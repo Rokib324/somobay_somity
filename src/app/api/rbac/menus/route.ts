@@ -49,6 +49,16 @@ export async function GET(req: NextRequest) {
       new Set([...roleSlugs, ...userOverrideSlugs])
     );
 
+    // Ensure executive roles (Secretary, Vice Chairman, Chairman, Super Admin) always receive Approvals
+    if (['Secretary', 'Vice Chairman', 'Chairman', 'Super Admin'].includes(sessionUser.role)) {
+      const execApprovalSlugs = ['approvals', 'approvals-queue', 'approvals-members', 'approvals-transactions', 'approvals-history'];
+      for (const s of execApprovalSlugs) {
+        if (!allAuthorizedSlugs.includes(s)) {
+          allAuthorizedSlugs.push(s);
+        }
+      }
+    }
+
     // 3. Build nested NavGroup tree
     const menuTree = buildMenuTree(allAuthorizedSlugs);
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import LoanAccount from '@/models/LoanAccount';
+import Approval from '@/models/Approval';
 
 export async function GET(req: NextRequest) {
   try {
@@ -97,6 +98,40 @@ export async function POST(req: NextRequest) {
       status: 'pending_approval',
       schedule,
     });
+
+    // Create Approval record for executive workflow
+    try {
+      const appCount = await Approval.countDocuments();
+      const approvalNo = `APP-${new Date().getFullYear()}-${(appCount + 1001).toString().padStart(4, '0')}`;
+      await Approval.create({
+        approvalNo,
+        type: 'loan',
+        title: `Loan Application: ৳ ${Number(principal).toLocaleString()} (${loan.memberName})`,
+        description: `Product: ${loan.productName} | ${loan.installments} ${loan.installmentType} installments | Purpose: ${loan.purpose || 'General Loan'}`,
+        entityId: loan._id,
+        entityModel: 'LoanAccount',
+        referenceNo: loanNo,
+        memberId: loan.memberId,
+        memberName: loan.memberName,
+        amount: Number(principal),
+        branch: loan.branch || 'Main Branch',
+        status: 'pending',
+        currentStage: 'secretary',
+        steps: [],
+        submittedBy: body.appliedBy || 'Loan Officer',
+        submittedAt: new Date(),
+        metadata: {
+          productName: loan.productName,
+          principalAmount: loan.principalAmount,
+          totalAmount: loan.totalAmount,
+          installments: loan.installments,
+          installmentAmount: loan.installmentAmount,
+          interestRate: loan.interestRate,
+        },
+      });
+    } catch (appErr) {
+      console.error('Failed to create Approval record for loan:', appErr);
+    }
 
     return NextResponse.json(loan, { status: 201 });
   } catch (error: unknown) {

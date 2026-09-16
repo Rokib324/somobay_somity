@@ -19,6 +19,17 @@ const ALL_NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'CORE OPERATIVE',
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: 'fa-solid fa-chart-line' },
+      {
+        label: 'Approvals',
+        href: '/approvals',
+        icon: 'fa-solid fa-clipboard-check',
+        submenu: [
+          { label: 'My Action Queue', href: '/approvals' },
+          { label: 'Member Approvals', href: '/approvals?tab=members' },
+          { label: 'Transaction Approvals', href: '/approvals?tab=transactions' },
+          { label: 'Approval History', href: '/approvals?tab=history' },
+        ],
+      },
     ],
   },
   {
@@ -164,6 +175,7 @@ const ALL_NAV_GROUPS: { title: string; items: NavItem[] }[] = [
 // Module-level storage persists across client-side page transitions in Next.js
 let globalSidebarScroll = 0;
 let globalOpenMenus: Record<string, boolean> = {
+  Approvals: true,
   Accounts: true,
   Members: true,
   Savings: true,
