@@ -1,34 +1,66 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export type ApprovalType = 'member' | 'withdrawal' | 'loan' | 'voucher' | 'transaction';
-export type ApprovalStage = 'secretary' | 'vice_chairman' | 'chairman' | 'completed';
+export type ApprovalType =
+  | 'member'
+  | 'withdrawal'
+  | 'loan'
+  | 'voucher'
+  | 'transaction'
+  | 'leave'
+  | 'manual_attendance';
+
+/**
+ * Workflow stages per type:
+ *  - member / withdrawal:          secretary → vice_chairman → chairman
+ *  - loan:                         loan_committee_head → director_head → secretary → chairman
+ *  - voucher:                      re_committee_head → supervisor_committee_head → secretary → chairman
+ *  - leave / manual_attendance:    employer_head → hr_director → chairman
+ */
+export type ApprovalStage =
+  | 'secretary'
+  | 'vice_chairman'
+  | 'chairman'
+  | 'completed'
+  | 'loan_committee_head'
+  | 'director_head'
+  | 're_committee_head'
+  | 'supervisor_committee_head'
+  | 'employer_head'
+  | 'hr_director';
+
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 export interface IApprovalStep {
-  stage: 'secretary' | 'vice_chairman' | 'chairman';
+  stage: ApprovalStage;
   action: 'approved' | 'rejected';
-  actionBy: string;       // User name
-  actionByRole: string;   // 'Secretary' | 'Vice Chairman' | 'Chairman' | 'Super Admin'
+  actionBy: string;
+  actionByRole: string;
   actionById?: string;
   notes?: string;
   actionAt: Date;
 }
 
 export interface IApproval extends Document {
-  approvalNo: string;     // e.g. APP-2026-0001
+  approvalNo: string;
   type: ApprovalType;
   title: string;
   description?: string;
 
   // Source entity reference
   entityId: mongoose.Types.ObjectId;
-  entityModel: 'Member' | 'WithdrawalRequest' | 'LoanAccount' | 'Voucher' | 'Collection';
+  entityModel: 'Member' | 'WithdrawalRequest' | 'LoanAccount' | 'Voucher' | 'Collection' | 'Leave' | 'Attendance';
   referenceNo?: string;
 
   // Member context (if applicable)
   memberId?: mongoose.Types.ObjectId;
   memberName?: string;
   memberAccountNo?: string;
+
+  // Employee context (for Leave / Manual Attendance)
+  empId?: mongoose.Types.ObjectId;
+  empName?: string;
+  empCode?: string;
+  department?: string;
 
   // Financial details (if transaction)
   amount?: number;
@@ -65,7 +97,12 @@ export interface IApproval extends Document {
 const ApprovalStepSchema = new Schema<IApprovalStep>({
   stage: {
     type: String,
-    enum: ['secretary', 'vice_chairman', 'chairman'],
+    enum: [
+      'secretary', 'vice_chairman', 'chairman',
+      'loan_committee_head', 'director_head',
+      're_committee_head', 'supervisor_committee_head',
+      'employer_head', 'hr_director',
+    ],
     required: true,
   },
   action: {
@@ -85,7 +122,7 @@ const ApprovalSchema = new Schema<IApproval>(
     approvalNo: { type: String, required: true, unique: true },
     type: {
       type: String,
-      enum: ['member', 'withdrawal', 'loan', 'voucher', 'transaction'],
+      enum: ['member', 'withdrawal', 'loan', 'voucher', 'transaction', 'leave', 'manual_attendance'],
       required: true,
       index: true,
     },
@@ -95,7 +132,7 @@ const ApprovalSchema = new Schema<IApproval>(
     entityId: { type: Schema.Types.ObjectId, required: true, index: true },
     entityModel: {
       type: String,
-      enum: ['Member', 'WithdrawalRequest', 'LoanAccount', 'Voucher', 'Collection'],
+      enum: ['Member', 'WithdrawalRequest', 'LoanAccount', 'Voucher', 'Collection', 'Leave', 'Attendance'],
       required: true,
     },
     referenceNo: { type: String, index: true },
@@ -103,6 +140,12 @@ const ApprovalSchema = new Schema<IApproval>(
     memberId: { type: Schema.Types.ObjectId, ref: 'Member', index: true },
     memberName: String,
     memberAccountNo: String,
+
+    // Employee fields (Leave / Manual Attendance)
+    empId: { type: Schema.Types.ObjectId, ref: 'Employee', index: true },
+    empName: String,
+    empCode: String,
+    department: String,
 
     amount: { type: Number, default: 0 },
     branch: { type: String, default: 'Main Branch' },
@@ -115,7 +158,12 @@ const ApprovalSchema = new Schema<IApproval>(
     },
     currentStage: {
       type: String,
-      enum: ['secretary', 'vice_chairman', 'chairman', 'completed'],
+      enum: [
+        'secretary', 'vice_chairman', 'chairman', 'completed',
+        'loan_committee_head', 'director_head',
+        're_committee_head', 'supervisor_committee_head',
+        'employer_head', 'hr_director',
+      ],
       default: 'secretary',
       index: true,
     },
