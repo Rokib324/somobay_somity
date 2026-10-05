@@ -15,6 +15,19 @@ export function BlankRegistrationFormModal({ isOpen, onClose }: BlankRegistratio
     const printContent = formRef.current;
     if (!printContent) return;
 
+    // The form is styled with Tailwind utility classes, so the print window
+    // must load the same stylesheets as the app or the layout falls apart.
+    const appStyles = Array.from(
+      document.querySelectorAll<HTMLLinkElement | HTMLStyleElement>('link[rel="stylesheet"], style')
+    )
+      .map((node) => {
+        if (node instanceof HTMLLinkElement) {
+          return `<link rel="stylesheet" href="${new URL(node.href, window.location.href).href}">`;
+        }
+        return node.outerHTML;
+      })
+      .join('\n');
+
     const printWindow = window.open('', '_blank', 'width=900,height=1000');
     if (!printWindow) {
       alert('Please enable popups to print registration form');
@@ -26,135 +39,43 @@ export function BlankRegistrationFormModal({ isOpen, onClose }: BlankRegistratio
       <html>
         <head>
           <title>Blank Member Registration Form - Somity Online</title>
+          <base href="${window.location.origin}/">
+          ${appStyles}
           <style>
             @page {
               size: A4 portrait;
-              margin: 15mm;
+              margin: 12mm;
             }
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-              font-size: 11px;
-              color: #1e293b;
+            html, body {
+              background: #ffffff !important;
               margin: 0;
-              padding: 10px;
+              padding: 0;
             }
-            .form-container {
-              border: 2px solid #0f172a;
-              padding: 16px;
-              max-width: 800px;
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .print-root {
+              width: 100%;
+              max-width: 186mm;
               margin: 0 auto;
             }
-            .header-table {
-              width: 100%;
-              border-bottom: 2px solid #0f172a;
-              padding-bottom: 8px;
-              margin-bottom: 12px;
-            }
-            .title-main {
-              font-size: 18px;
-              font-weight: 900;
-              text-transform: uppercase;
-              text-align: center;
-              margin: 0;
-              color: #1e3a8a;
-            }
-            .title-sub {
-              font-size: 10px;
-              text-align: center;
-              color: #475569;
-              margin-top: 2px;
-            }
-            .form-title {
-              background: #0f172a;
-              color: white;
-              font-size: 12px;
-              font-weight: bold;
-              text-align: center;
-              padding: 4px;
-              letter-spacing: 1px;
-              margin: 10px 0;
-            }
-            .photo-box {
-              width: 95px;
-              height: 115px;
-              border: 1px dashed #64748b;
-              text-align: center;
-              font-size: 9px;
-              color: #64748b;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              box-sizing: border-box;
-            }
-            .sec-header {
-              background: #f1f5f9;
-              border-left: 4px solid #1e3a8a;
-              padding: 4px 8px;
-              font-weight: bold;
-              font-size: 11px;
-              margin: 10px 0 6px;
-              text-transform: uppercase;
-            }
-            .field-row {
-              display: flex;
-              margin-bottom: 8px;
-              align-items: flex-end;
-              gap: 8px;
-            }
-            .field-label {
-              font-weight: 600;
-              white-space: nowrap;
-              color: #334155;
-            }
-            .field-line {
-              flex: 1;
-              border-bottom: 1px dotted #94a3b8;
-              height: 16px;
-            }
-            .checkbox-group {
-              display: flex;
-              gap: 12px;
-              flex-wrap: wrap;
-            }
-            .checkbox-item {
-              display: flex;
-              align-items: center;
-              gap: 4px;
-            }
-            .box-box {
-              width: 12px;
-              height: 12px;
-              border: 1px solid #475569;
-              display: inline-block;
-            }
-            .sig-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 20px;
-              margin-top: 35px;
-              text-align: center;
-            }
-            .sig-box {
-              border-top: 1px solid #475569;
-              padding-top: 4px;
-              font-size: 10px;
-              font-weight: 600;
-            }
-            .office-box {
-              border: 1px solid #cbd5e1;
-              background: #f8fafc;
-              padding: 8px;
-              margin-top: 14px;
+            .print-root > div {
+              border-radius: 0 !important;
+              break-inside: avoid;
             }
           </style>
         </head>
         <body>
-          <div class="form-container">
-            ${printContent.innerHTML}
+          <div class="print-root">
+            ${printContent.outerHTML}
           </div>
           <script>
             window.onload = function() {
-              window.print();
+              setTimeout(function() {
+                window.focus();
+                window.print();
+              }, 300);
               window.onafterprint = function() { window.close(); };
             }
           </script>
