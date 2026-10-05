@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import LoanAccount from '@/models/LoanAccount';
 import Approval from '@/models/Approval';
+import { createWithSequentialCode, approvalNoSequence } from '@/lib/sequence';
 
 export async function GET(req: NextRequest) {
   try {
@@ -50,9 +51,7 @@ export async function POST(req: NextRequest) {
     await connectDB();
     const body = await req.json();
 
-    const count = await LoanAccount.countDocuments();
     const year = new Date().getFullYear();
-    const loanNo = `LN-${year}-${(count + 1).toString().padStart(3, '0')}`;
 
     // Calculate interest and totals
     const principal = parseFloat(body.principalAmount);
@@ -64,7 +63,14 @@ export async function POST(req: NextRequest) {
     const installmentAmount = Math.ceil(totalAmount / months);
 
     // Generate installment schedule
-    const schedule = [];
+    const schedule: Array<{
+      dueDate: Date;
+      principal: number;
+      interest: number;
+      total: number;
+      paidAmount: number;
+      status: string;
+    }> = [];
     const startDate = new Date();
     const principalPerInstallment = Math.floor(principal / months);
     const interestPerInstallment = Math.ceil(interestAmount / months);
@@ -88,22 +94,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const loan = await LoanAccount.create({
-      ...body,
-      loanNo,
-      interestAmount,
-      totalAmount,
-      dueAmount: totalAmount,
-      installmentAmount,
-      status: 'pending_approval',
-      schedule,
-    });
+    const loan = await createWithSequentialCode(
+      { model: LoanAccount, field: 'loanNo', prefix: `LN-${year}-`, startAt: 1, pad: 3 },
+      (code) => LoanAccount.create({
+        ...body,
+        loanNo: code,
+        interestAmount,
+        totalAmount,
+        dueAmount: totalAmount,
+        installmentAmount,
+        status: 'pending_approval',
+        schedule,
+      })
+    );
+    const loanNo: string = loan.loanNo;
 
     // Create Approval record for executive workflow
     try {
-      const appCount = await Approval.countDocuments();
-      const approvalNo = `APP-${new Date().getFullYear()}-${(appCount + 1001).toString().padStart(4, '0')}`;
-      await Approval.create({
+      await createWithSequentialCode(approvalNoSequence(Approval), (approvalNo) => Approval.create({
         approvalNo,
         type: 'loan',
         title: `Loan Application: ৳ ${Number(principal).toLocaleString()} (${loan.memberName})`,
@@ -128,7 +136,7 @@ export async function POST(req: NextRequest) {
           installmentAmount: loan.installmentAmount,
           interestRate: loan.interestRate,
         },
-      });
+      }));
     } catch (appErr) {
       console.error('Failed to create Approval record for loan:', appErr);
     }

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { ImageUploadBox } from '@/components/common/ImageUploadBox';
+import { RelationSelect } from '@/components/common/RelationSelect';
 import { Member, Nominee, Guarantor } from '@/types';
 
 interface EditMemberDetailsModalProps {
@@ -31,7 +32,7 @@ export function EditMemberDetailsModal({
   // Nominee Form state
   const [nominee, setNominee] = useState<Nominee>({
     name: member.nominee?.name || '',
-    relation: member.nominee?.relation || 'Spouse',
+    relation: member.nominee?.relation || '',
     percentage: member.nominee?.percentage ?? 100,
     nid: member.nominee?.nid || '',
     phone: member.nominee?.phone || '',
@@ -213,12 +214,10 @@ export function EditMemberDetailsModal({
 
               <div>
                 <label className={labelClass}>Relationship with Member *</label>
-                <input
-                  type="text"
+                <RelationSelect
                   required
                   value={nominee.relation}
-                  onChange={e => setNominee({ ...nominee, relation: e.target.value })}
-                  placeholder="Spouse / Son / Daughter / Mother"
+                  onChange={relation => setNominee({ ...nominee, relation })}
                   className={inputClass}
                 />
               </div>

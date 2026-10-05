@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import DepositAccount from '@/models/DepositAccount';
 import Member from '@/models/Member';
+import { createWithSequentialCode } from '@/lib/sequence';
 
 export async function GET(req: NextRequest) {
   try {
@@ -75,8 +76,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const count = await DepositAccount.countDocuments();
-    const accountNo = `DEP-${(count + 101).toString().padStart(4, '0')}`;
     const initialAmount = Number(body.amount) || 0;
 
     // Update member totalDeposit
@@ -95,12 +94,16 @@ export async function POST(req: NextRequest) {
       notes: 'Initial opening installment credit',
     }] : [];
 
-    const deposit = await DepositAccount.create({
-      ...body,
-      accountNo,
-      balance: initialAmount,
-      transactions: initialTransactions,
-    });
+    const deposit = await createWithSequentialCode(
+      { model: DepositAccount, field: 'accountNo', prefix: 'DEP-', startAt: 101, pad: 4 },
+      (accountNo) =>
+        DepositAccount.create({
+          ...body,
+          accountNo,
+          balance: initialAmount,
+          transactions: initialTransactions,
+        })
+    );
 
     return NextResponse.json(deposit, { status: 201 });
   } catch (error: unknown) {

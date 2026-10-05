@@ -5,6 +5,7 @@ import DepositAccount from '@/models/DepositAccount';
 import Member from '@/models/Member';
 import Collection from '@/models/Collection';
 import Approval from '@/models/Approval';
+import { createWithSequentialCode, approvalNoSequence } from '@/lib/sequence';
 
 export async function GET(req: NextRequest) {
   try {
@@ -66,31 +67,32 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const count = await WithdrawalRequest.countDocuments();
-    const requestNo = `WR-${(count + 101).toString().padStart(4, '0')}`;
-
-    const request = await WithdrawalRequest.create({
-      requestNo,
-      memberId: member._id,
-      memberName: member.name,
-      memberAccountNo: member.accountNo,
-      accountId: account._id,
-      accountNo: account.accountNo,
-      schemeType: account.type,
-      amount: withdrawAmt,
-      availableBalance: account.balance,
-      reason: reason || 'Savings encashment',
-      appliedBy: appliedBy || 'Teller Staff',
-      branch: member.branch || 'Main Branch',
-      status: 'Pending',
-    });
+    const request = await createWithSequentialCode(
+      { model: WithdrawalRequest, field: 'requestNo', prefix: 'WR-', startAt: 101, pad: 4 },
+      (requestNo) =>
+        WithdrawalRequest.create({
+          requestNo,
+          memberId: member._id,
+          memberName: member.name,
+          memberAccountNo: member.accountNo,
+          accountId: account._id,
+          accountNo: account.accountNo,
+          schemeType: account.type,
+          amount: withdrawAmt,
+          availableBalance: account.balance,
+          reason: reason || 'Savings encashment',
+          appliedBy: appliedBy || 'Teller Staff',
+          branch: member.branch || 'Main Branch',
+          status: 'Pending',
+        })
+    );
+    const requestNo: string = request.requestNo;
 
     // Create Approval record for executive workflow
     try {
-      const appCount = await Approval.countDocuments();
-      const approvalNo = `APP-${new Date().getFullYear()}-${(appCount + 1001).toString().padStart(4, '0')}`;
-      await Approval.create({
-        approvalNo,
+      await createWithSequentialCode(approvalNoSequence(Approval), (approvalNo) =>
+        Approval.create({
+          approvalNo,
         type: 'withdrawal',
         title: `Savings Withdrawal: ৳ ${withdrawAmt.toLocaleString()} (${member.name})`,
         description: `Account: ${account.accountNo} (${account.type}) | Reason: ${reason || 'Savings encashment'}`,
@@ -114,7 +116,7 @@ export async function POST(req: NextRequest) {
           amount: withdrawAmt,
           reason,
         },
-      });
+      }));
     } catch (appErr) {
       console.error('Failed to create Approval record for withdrawal:', appErr);
     }

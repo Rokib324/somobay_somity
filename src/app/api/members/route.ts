@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Member from '@/models/Member';
+import { nextSequentialCode, isDuplicateKeyError } from '@/lib/sequence';
 
 // GET /api/members?search=...&category=...&branch=...&status=...&page=1&limit=20
 export async function GET(req: NextRequest) {
@@ -57,21 +58,37 @@ export async function POST(req: NextRequest) {
     await connectDB();
     const body = await req.json();
 
-    // Auto-generate account number
-    const count = await Member.countDocuments();
-    const accountNo = `AC-${(count + 1001).toString().padStart(4, '0')}`;
+    // Friendly check for an already-registered NID
+    if (body.nid && (await Member.exists({ nid: body.nid }))) {
+      return NextResponse.json(
+        { error: `A member with NID "${body.nid}" is already registered.` },
+        { status: 409 }
+      );
+    }
 
-    // New members enter with status 'pending' awaiting executive approval
-    const member = await Member.create({
-      ...body,
-      accountNo,
-      status: body.status === 'active' ? 'pending' : (body.status || 'pending'),
-    });
+    // Auto-generate account number from the highest existing one (not the count,
+    // which collides after deletions). Retry if two registrations race.
+    let member;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const accountNo = await nextSequentialCode(Member, 'accountNo', 'AC-', 1001);
+      try {
+        // New members enter with status 'pending' awaiting executive approval
+        member = await Member.create({
+          ...body,
+          accountNo,
+          status: body.status === 'active' ? 'pending' : (body.status || 'pending'),
+        });
+        break;
+      } catch (err) {
+        if (isDuplicateKeyError(err, 'accountNo') && attempt < 4) continue;
+        throw err;
+      }
+    }
+    if (!member) throw new Error('Could not allocate a unique account number. Please try again.');
 
     // Create Approval record for Secretary review
     try {
-      const appCount = await Approval.countDocuments();
-      const approvalNo = `APP-${new Date().getFullYear()}-${(appCount + 1001).toString().padStart(4, '0')}`;
+      const approvalNo = await nextSequentialCode(Approval, 'approvalNo', `APP-${new Date().getFullYear()}-`, 1001);
       await Approval.create({
         approvalNo,
         type: 'member',
@@ -104,6 +121,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(member, { status: 201 });
   } catch (error: unknown) {
+    if (isDuplicateKeyError(error, 'nid')) {
+      return NextResponse.json({ error: 'A member with this NID is already registered.' }, { status: 409 });
+    }
     const msg = error instanceof Error ? error.message : 'Failed to create member';
     return NextResponse.json({ error: msg }, { status: 400 });
   }

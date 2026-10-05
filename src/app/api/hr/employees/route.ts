@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Employee from '@/models/Employee';
+import { createWithSequentialCode } from '@/lib/sequence';
 
 export async function GET(req: NextRequest) {
   try {
@@ -49,9 +50,10 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const count = await Employee.countDocuments();
-    const empId = `EMP-${(count + 1).toString().padStart(3, '0')}`;
-    const employee = await Employee.create({ ...body, empId });
+    const employee = await createWithSequentialCode(
+      { model: Employee, field: 'empId', prefix: 'EMP-', startAt: 1, pad: 3 },
+      (empId) => Employee.create({ ...body, empId })
+    );
     return NextResponse.json(employee, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to create employee';

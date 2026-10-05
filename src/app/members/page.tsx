@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { MemberIdCardModal } from '@/components/members/MemberIdCardModal';
 import { BlankRegistrationFormModal } from '@/components/members/BlankRegistrationFormModal';
 import { ImageUploadBox } from '@/components/common/ImageUploadBox';
+import { RelationSelect } from '@/components/common/RelationSelect';
 import Link from 'next/link';
 
 interface Member {
@@ -51,7 +52,7 @@ export default function MembersListPage() {
     name: '', mobile: '', fatherName: '', motherName: '',
     nid: '', address: '', category: 'Cooperative Member', branch: '',
     dateOfBirth: '', status: 'pending',
-    nomineeName: '', nomineeRelation: 'Spouse', nomineeNid: '', nomineePhone: '', nomineePercentage: 100,
+    nomineeName: '', nomineeRelation: '', nomineeNid: '', nomineePhone: '', nomineePercentage: 100,
     photo: '', signature: '',
   });
 
@@ -242,6 +243,10 @@ export default function MembersListPage() {
       alert('Please fill all required fields (*)');
       return;
     }
+    if (form.nomineeName && !form.nomineeRelation) {
+      alert('Please select the nominee\'s relation to the member');
+      return;
+    }
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
@@ -284,7 +289,7 @@ export default function MembersListPage() {
         name: '', mobile: '', fatherName: '', motherName: '',
         nid: '', address: '', category: 'Cooperative Member', branch: branches[0] || '',
         dateOfBirth: '', status: 'pending',
-        nomineeName: '', nomineeRelation: 'Spouse', nomineeNid: '', nomineePhone: '', nomineePercentage: 100,
+        nomineeName: '', nomineeRelation: '', nomineeNid: '', nomineePhone: '', nomineePercentage: 100,
         photo: '', signature: '',
       });
       fetchMembers('', 1);
@@ -438,7 +443,7 @@ export default function MembersListPage() {
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Relation</label>
-              <input type="text" placeholder="e.g. Spouse / Son / Daughter" className={inputClass} value={form.nomineeRelation} onChange={e => setForm(f => ({ ...f, nomineeRelation: e.target.value }))} />
+              <RelationSelect className={inputClass} value={form.nomineeRelation} onChange={val => setForm(f => ({ ...f, nomineeRelation: val }))} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">

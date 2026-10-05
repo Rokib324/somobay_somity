@@ -7,6 +7,7 @@ import WithdrawalRequest from '@/models/WithdrawalRequest';
 import LoanAccount from '@/models/LoanAccount';
 import Voucher from '@/models/Voucher';
 import Leave from '@/models/Leave';
+import { createWithSequentialCode, approvalNoSequence } from '@/lib/sequence';
 
 /**
  * Role → Stage mapping.
@@ -67,20 +68,20 @@ async function autoSyncPendingRecords() {
     for (const m of pendingMembers) {
       const existing = await Approval.findOne({ entityId: m._id });
       if (!existing) {
-        const count = await Approval.countDocuments();
-        const approvalNo = `APP-${new Date().getFullYear()}-${(count + 1001).toString().padStart(4, '0')}`;
-        await Approval.create({
-          approvalNo, type: 'member',
-          title: `New Member Registration: ${m.name}`,
-          description: `Category: ${m.category} | Branch: ${m.branch}`,
-          entityId: m._id, entityModel: 'Member',
-          referenceNo: m.accountNo, memberId: m._id,
-          memberName: m.name, memberAccountNo: m.accountNo,
-          branch: m.branch || 'Main Branch',
-          status: 'pending', currentStage: 'secretary', steps: [],
-          submittedBy: 'Registration Desk', submittedAt: m.createdAt || new Date(),
-          metadata: { mobile: m.mobile, nid: m.nid, fatherName: m.fatherName, motherName: m.motherName, category: m.category, address: m.address },
-        });
+        await createWithSequentialCode(approvalNoSequence(Approval), (approvalNo) =>
+          Approval.create({
+            approvalNo, type: 'member',
+            title: `New Member Registration: ${m.name}`,
+            description: `Category: ${m.category} | Branch: ${m.branch}`,
+            entityId: m._id, entityModel: 'Member',
+            referenceNo: m.accountNo, memberId: m._id,
+            memberName: m.name, memberAccountNo: m.accountNo,
+            branch: m.branch || 'Main Branch',
+            status: 'pending', currentStage: 'secretary', steps: [],
+            submittedBy: 'Registration Desk', submittedAt: m.createdAt || new Date(),
+            metadata: { mobile: m.mobile, nid: m.nid, fatherName: m.fatherName, motherName: m.motherName, category: m.category, address: m.address },
+          })
+        );
       }
     }
 
@@ -89,20 +90,20 @@ async function autoSyncPendingRecords() {
     for (const w of pendingWithdrawals) {
       const existing = await Approval.findOne({ entityId: w._id });
       if (!existing) {
-        const count = await Approval.countDocuments();
-        const approvalNo = `APP-${new Date().getFullYear()}-${(count + 1001).toString().padStart(4, '0')}`;
-        await Approval.create({
-          approvalNo, type: 'withdrawal',
-          title: `Savings Withdrawal: ৳ ${w.amount.toLocaleString()} (${w.memberName})`,
-          description: `Account: ${w.accountNo} (${w.schemeType}) | Reason: ${w.reason}`,
-          entityId: w._id, entityModel: 'WithdrawalRequest',
-          referenceNo: w.requestNo, memberId: w.memberId,
-          memberName: w.memberName, memberAccountNo: w.memberAccountNo,
-          amount: w.amount, branch: w.branch || 'Main Branch',
-          status: 'pending', currentStage: 'secretary', steps: [],
-          submittedBy: w.appliedBy || 'Teller Staff', submittedAt: w.createdAt || new Date(),
-          metadata: { schemeType: w.schemeType, availableBalance: w.availableBalance, reason: w.reason },
-        });
+        await createWithSequentialCode(approvalNoSequence(Approval), (approvalNo) =>
+          Approval.create({
+            approvalNo, type: 'withdrawal',
+            title: `Savings Withdrawal: ৳ ${w.amount.toLocaleString()} (${w.memberName})`,
+            description: `Account: ${w.accountNo} (${w.schemeType}) | Reason: ${w.reason}`,
+            entityId: w._id, entityModel: 'WithdrawalRequest',
+            referenceNo: w.requestNo, memberId: w.memberId,
+            memberName: w.memberName, memberAccountNo: w.memberAccountNo,
+            amount: w.amount, branch: w.branch || 'Main Branch',
+            status: 'pending', currentStage: 'secretary', steps: [],
+            submittedBy: w.appliedBy || 'Teller Staff', submittedAt: w.createdAt || new Date(),
+            metadata: { schemeType: w.schemeType, availableBalance: w.availableBalance, reason: w.reason },
+          })
+        );
       }
     }
 
@@ -111,20 +112,20 @@ async function autoSyncPendingRecords() {
     for (const l of pendingLoans) {
       const existing = await Approval.findOne({ entityId: l._id });
       if (!existing) {
-        const count = await Approval.countDocuments();
-        const approvalNo = `APP-${new Date().getFullYear()}-${(count + 1001).toString().padStart(4, '0')}`;
-        await Approval.create({
-          approvalNo, type: 'loan',
-          title: `Loan Application: ৳ ${l.principalAmount.toLocaleString()} (${l.memberName})`,
-          description: `Product: ${l.productName} | ${l.installments} ${l.installmentType} installments | Purpose: ${l.purpose || 'General Loan'}`,
-          entityId: l._id, entityModel: 'LoanAccount',
-          referenceNo: l.loanNo, memberId: l.memberId,
-          memberName: l.memberName, amount: l.principalAmount,
-          branch: l.branch || 'Main Branch',
-          status: 'pending', currentStage: 'loan_committee_head', steps: [],
-          submittedBy: 'Loan Officer', submittedAt: l.createdAt || new Date(),
-          metadata: { productName: l.productName, principalAmount: l.principalAmount, totalAmount: l.totalAmount, installments: l.installments, installmentAmount: l.installmentAmount, interestRate: l.interestRate },
-        });
+        await createWithSequentialCode(approvalNoSequence(Approval), (approvalNo) =>
+          Approval.create({
+            approvalNo, type: 'loan',
+            title: `Loan Application: ৳ ${l.principalAmount.toLocaleString()} (${l.memberName})`,
+            description: `Product: ${l.productName} | ${l.installments} ${l.installmentType} installments | Purpose: ${l.purpose || 'General Loan'}`,
+            entityId: l._id, entityModel: 'LoanAccount',
+            referenceNo: l.loanNo, memberId: l.memberId,
+            memberName: l.memberName, amount: l.principalAmount,
+            branch: l.branch || 'Main Branch',
+            status: 'pending', currentStage: 'loan_committee_head', steps: [],
+            submittedBy: 'Loan Officer', submittedAt: l.createdAt || new Date(),
+            metadata: { productName: l.productName, principalAmount: l.principalAmount, totalAmount: l.totalAmount, installments: l.installments, installmentAmount: l.installmentAmount, interestRate: l.interestRate },
+          })
+        );
       }
     }
 
@@ -133,20 +134,20 @@ async function autoSyncPendingRecords() {
     for (const lv of pendingLeaves) {
       const existing = await Approval.findOne({ entityId: lv._id });
       if (!existing) {
-        const count = await Approval.countDocuments();
-        const approvalNo = `APP-${new Date().getFullYear()}-${(count + 1001).toString().padStart(4, '0')}`;
-        await Approval.create({
-          approvalNo, type: 'leave',
-          title: `Leave Request: ${lv.empName} (${lv.leaveType})`,
-          description: `${lv.totalDays} days | ${new Date(lv.fromDate).toLocaleDateString()} – ${new Date(lv.toDate).toLocaleDateString()} | Reason: ${lv.reason}`,
-          entityId: lv._id, entityModel: 'Leave',
-          referenceNo: lv.empCode,
-          empId: lv.empId, empName: lv.empName, empCode: lv.empCode,
-          branch: lv.branch || 'Main Branch',
-          status: 'pending', currentStage: 'employer_head', steps: [],
-          submittedBy: lv.empName, submittedAt: lv.createdAt || new Date(),
-          metadata: { leaveType: lv.leaveType, fromDate: lv.fromDate, toDate: lv.toDate, totalDays: lv.totalDays, reason: lv.reason },
-        });
+        await createWithSequentialCode(approvalNoSequence(Approval), (approvalNo) =>
+          Approval.create({
+            approvalNo, type: 'leave',
+            title: `Leave Request: ${lv.empName} (${lv.leaveType})`,
+            description: `${lv.totalDays} days | ${new Date(lv.fromDate).toLocaleDateString()} – ${new Date(lv.toDate).toLocaleDateString()} | Reason: ${lv.reason}`,
+            entityId: lv._id, entityModel: 'Leave',
+            referenceNo: lv.empCode,
+            empId: lv.empId, empName: lv.empName, empCode: lv.empCode,
+            branch: lv.branch || 'Main Branch',
+            status: 'pending', currentStage: 'employer_head', steps: [],
+            submittedBy: lv.empName, submittedAt: lv.createdAt || new Date(),
+            metadata: { leaveType: lv.leaveType, fromDate: lv.fromDate, toDate: lv.toDate, totalDays: lv.totalDays, reason: lv.reason },
+          })
+        );
       }
     }
   } catch (err) {
@@ -287,40 +288,58 @@ export async function POST(req: NextRequest) {
 
     if (!title) return NextResponse.json({ error: 'Title is required for approval request' }, { status: 400 });
 
-    const count = await Approval.countDocuments();
-    const approvalNo = `APP-${new Date().getFullYear()}-${(count + 1001).toString().padStart(4, '0')}`;
-    const referenceNo = `TXN-${(count + 5001).toString().padStart(4, '0')}`;
-
     let startStage: ApprovalStage = 'secretary';
     if (type === 'loan') startStage = 'loan_committee_head';
     else if (type === 'voucher') startStage = 're_committee_head';
     else if (type === 'leave' || type === 'manual_attendance') startStage = 'employer_head';
 
     let entityId: any = null;
+    let referenceNo = '';
 
     if (type === 'voucher' || type === 'transaction' || type === 'withdrawal') {
-      const vch = await Voucher.create({
-        voucherNo: referenceNo, type: 'payment',
-        entries: [
-          { accountCode: '4001', accountName: title, debit: Number(amount), credit: 0 },
-          { accountCode: '1010', accountName: 'Cash in Hand', debit: 0, credit: Number(amount) },
-        ],
-        totalDebit: Number(amount), totalCredit: Number(amount),
-        narration: description || title, preparedBy: sessionUser.name,
-        branch: branch || sessionUser.branch || 'Main Branch', status: 'draft',
-      });
+      const vch = await createWithSequentialCode(
+        { model: Voucher, field: 'voucherNo', prefix: 'TXN-', startAt: 5001, pad: 4 },
+        (voucherNo) =>
+          Voucher.create({
+            voucherNo,
+            type: 'payment',
+            entries: [
+              { accountCode: '4001', accountName: title, debit: Number(amount), credit: 0 },
+              { accountCode: '1010', accountName: 'Cash in Hand', debit: 0, credit: Number(amount) },
+            ],
+            totalDebit: Number(amount),
+            totalCredit: Number(amount),
+            narration: description || title,
+            preparedBy: sessionUser.name,
+            branch: branch || sessionUser.branch || 'Main Branch',
+            status: 'draft',
+          })
+      );
       entityId = vch._id;
+      referenceNo = vch.voucherNo;
     }
 
-    const approval = await Approval.create({
-      approvalNo, type, title, description,
-      entityId: entityId || new (require('mongoose').Types.ObjectId)(),
-      entityModel: 'Voucher',
-      referenceNo, amount: Number(amount),
-      branch: branch || sessionUser.branch || 'Main Branch',
-      status: 'pending', currentStage: startStage, steps: [],
-      submittedBy: sessionUser.name, submittedAt: new Date(), metadata,
-    });
+    const approval = await createWithSequentialCode(
+      approvalNoSequence(Approval),
+      (approvalNo) =>
+        Approval.create({
+          approvalNo,
+          type,
+          title,
+          description,
+          entityId: entityId || new (require('mongoose').Types.ObjectId)(),
+          entityModel: 'Voucher',
+          referenceNo: referenceNo || `TXN-${Date.now().toString().slice(-4)}`,
+          amount: Number(amount),
+          branch: branch || sessionUser.branch || 'Main Branch',
+          status: 'pending',
+          currentStage: startStage,
+          steps: [],
+          submittedBy: sessionUser.name,
+          submittedAt: new Date(),
+          metadata,
+        })
+    );
 
     return NextResponse.json(approval, { status: 201 });
   } catch (error: unknown) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Branch from '@/models/Branch';
+import { createWithSequentialCode } from '@/lib/sequence';
 
 export async function GET() {
   try {
@@ -16,9 +17,12 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
     const body = await req.json();
-    const count = await Branch.countDocuments();
-    const code = body.code || `BR${(count + 1).toString().padStart(2, '0')}`;
-    const branch = await Branch.create({ ...body, code });
+    const branch = body.code
+      ? await Branch.create(body)
+      : await createWithSequentialCode(
+          { model: Branch, field: 'code', prefix: 'BR', startAt: 1, pad: 2 },
+          (code) => Branch.create({ ...body, code })
+        );
     return NextResponse.json(branch, { status: 201 });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to create branch';
