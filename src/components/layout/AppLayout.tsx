@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -11,6 +11,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const toggleSidebar = useCallback(() => setSidebarOpen(open => !open), []);
 
   // Client-side safety net — proxy.ts already handles this server-side
   useEffect(() => {
@@ -36,9 +37,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'md:ml-[270px]' : 'ml-0'}`}>
-        <Header toggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        <Header toggleSidebar={toggleSidebar} />
         <RouteGuard>
           <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">{children}</main>
         </RouteGuard>

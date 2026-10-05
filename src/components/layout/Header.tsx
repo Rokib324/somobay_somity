@@ -10,7 +10,7 @@ function getInitials(name: string): string {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 }
 
-export const Header: React.FC<{ toggleSidebar: () => void }> = ({ toggleSidebar }) => {
+export const Header = React.memo(function Header({ toggleSidebar }: { toggleSidebar: () => void }) {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -146,4 +146,4 @@ export const Header: React.FC<{ toggleSidebar: () => void }> = ({ toggleSidebar 
       </div>
     </header>
   );
-};
+});

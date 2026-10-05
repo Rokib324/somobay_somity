@@ -24,7 +24,7 @@ function getRowKey<T extends { id?: string | number; _id?: string }>(item: T, id
   return String(item._id ?? item.id ?? idx);
 }
 
-export function DataTable<T extends { id?: string | number; _id?: string }>({
+function DataTableInner<T extends { id?: string | number; _id?: string }>({
   columns,
   data = [],
   searchPlaceholder = 'Search records...',
@@ -161,3 +161,7 @@ export function DataTable<T extends { id?: string | number; _id?: string }>({
     </div>
   );
 }
+
+// Memoized: skips re-rendering when the parent re-renders with the same props
+// (pass memoized `columns` / `actions` from the parent to benefit).
+export const DataTable = React.memo(DataTableInner) as typeof DataTableInner;

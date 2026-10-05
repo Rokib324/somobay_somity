@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DataTable } from '@/components/ui/DataTable';
@@ -105,7 +105,11 @@ export default function MembersListPage() {
 
   const handlePageChange = (page: number) => fetchMembers(search, page);
 
-  const handleDelete = async (member: Member) => {
+  // Keep latest search/page in a ref so handleDelete can stay referentially stable
+  const listStateRef = useRef({ search, page: pagination.page });
+  listStateRef.current = { search, page: pagination.page };
+
+  const handleDelete = useCallback(async (member: Member) => {
     const confirmDelete = window.confirm(
       `Are you sure you want to permanently delete member "${member.name}" (${member.accountNo})? This action cannot be undone.`
     );
@@ -119,15 +123,15 @@ export default function MembersListPage() {
         alert(err.error || 'Failed to delete member');
         return;
       }
-      fetchMembers(search, pagination.page);
+      fetchMembers(listStateRef.current.search, listStateRef.current.page);
     } catch {
       alert('Network error while deleting member');
     } finally {
       setDeletingId(null);
     }
-  };
+  }, [fetchMembers]);
 
-  const handleQuickPrint = (member: Member) => {
+  const handleQuickPrint = useCallback((member: Member) => {
     const printWindow = window.open('', '_blank', 'width=700,height=500');
     if (!printWindow) return;
 
@@ -168,7 +172,70 @@ export default function MembersListPage() {
       </html>
     `);
     printWindow.document.close();
-  };
+  }, []);
+
+  const tableColumns = useMemo(() => [
+    { header: 'Account No', accessor: 'accountNo' as const, className: 'font-bold text-blue-600 font-mono' },
+    { header: 'Member Name', accessor: 'name' as const, className: 'font-semibold text-slate-900' },
+    { header: 'Mobile Number', accessor: 'mobile' as const, className: 'text-slate-600' },
+    { header: 'NID Number', accessor: 'nid' as const, className: 'text-slate-500 font-mono text-xs' },
+    { header: 'Category', accessor: 'category' as const, className: 'text-slate-700 font-medium' },
+    { header: 'Branch', accessor: 'branch' as const, className: 'text-slate-500' },
+    {
+      header: 'Total Savings',
+      accessor: (item: Member) => `৳ ${item.totalDeposit.toLocaleString()}`,
+      className: 'font-bold text-emerald-600',
+    },
+    {
+      header: 'Status',
+      accessor: (item: Member) => <Badge variant={item.status === 'active' ? 'success' : 'warning'}>{item.status}</Badge>,
+    },
+  ], []);
+
+  const renderActions = useCallback((member: Member) => (
+    <div className="flex items-center gap-1.5">
+      {/* View */}
+      <Link
+        href={`/members/${member._id}`}
+        className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-blue-600 font-bold text-xs rounded-md transition-colors flex items-center gap-1"
+        title="View Profile & Other Books"
+      >
+        <i className="fa-solid fa-eye text-[11px]"></i>
+        View
+      </Link>
+
+      {/* ID Card */}
+      <button
+        onClick={() => setSelectedMemberForCard(member)}
+        className="px-2.5 py-1 bg-slate-100 hover:bg-purple-50 text-purple-600 font-bold text-xs rounded-md transition-colors flex items-center gap-1"
+        title="Print Biometric ID Card"
+      >
+        <i className="fa-solid fa-id-card text-[11px]"></i>
+        ID Card
+      </button>
+
+      {/* Print Slip */}
+      <button
+        onClick={() => handleQuickPrint(member)}
+        className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-50 text-emerald-600 font-bold text-xs rounded-md transition-colors flex items-center gap-1"
+        title="Print Member Slip"
+      >
+        <i className="fa-solid fa-print text-[11px]"></i>
+        Print
+      </button>
+
+      {/* Delete */}
+      <button
+        onClick={() => handleDelete(member)}
+        disabled={deletingId === member._id}
+        className="px-2.5 py-1 bg-slate-100 hover:bg-rose-50 text-rose-600 font-bold text-xs rounded-md transition-colors flex items-center gap-1 disabled:opacity-50"
+        title="Delete Member Profile"
+      >
+        <i className="fa-solid fa-trash text-[11px]"></i>
+        {deletingId === member._id ? '...' : 'Delete'}
+      </button>
+    </div>
+  ), [deletingId, handleDelete, handleQuickPrint]);
 
   const handleSave = async () => {
     if (!form.name || !form.mobile || !form.nid || !form.fatherName || !form.motherName) {
@@ -263,68 +330,9 @@ export default function MembersListPage() {
         searchPlaceholder="Search by Name, Account No, Mobile, NID..."
         onSearch={handleSearch}
         isLoading={loading}
-        columns={[
-          { header: 'Account No', accessor: 'accountNo', className: 'font-bold text-blue-600 font-mono' },
-          { header: 'Member Name', accessor: 'name', className: 'font-semibold text-slate-900' },
-          { header: 'Mobile Number', accessor: 'mobile', className: 'text-slate-600' },
-          { header: 'NID Number', accessor: 'nid', className: 'text-slate-500 font-mono text-xs' },
-          { header: 'Category', accessor: 'category', className: 'text-slate-700 font-medium' },
-          { header: 'Branch', accessor: 'branch', className: 'text-slate-500' },
-          {
-            header: 'Total Savings',
-            accessor: (item: Member) => `৳ ${item.totalDeposit.toLocaleString()}`,
-            className: 'font-bold text-emerald-600',
-          },
-          {
-            header: 'Status',
-            accessor: (item: Member) => <Badge variant={item.status === 'active' ? 'success' : 'warning'}>{item.status}</Badge>,
-          },
-        ]}
+        columns={tableColumns}
         data={members}
-        actions={(member: Member) => (
-          <div className="flex items-center gap-1.5">
-            {/* View */}
-            <Link
-              href={`/members/${member._id}`}
-              className="px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-blue-600 font-bold text-xs rounded-md transition-colors flex items-center gap-1"
-              title="View Profile & Other Books"
-            >
-              <i className="fa-solid fa-eye text-[11px]"></i>
-              View
-            </Link>
-
-            {/* ID Card */}
-            <button
-              onClick={() => setSelectedMemberForCard(member)}
-              className="px-2.5 py-1 bg-slate-100 hover:bg-purple-50 text-purple-600 font-bold text-xs rounded-md transition-colors flex items-center gap-1"
-              title="Print Biometric ID Card"
-            >
-              <i className="fa-solid fa-id-card text-[11px]"></i>
-              ID Card
-            </button>
-
-            {/* Print Slip */}
-            <button
-              onClick={() => handleQuickPrint(member)}
-              className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-50 text-emerald-600 font-bold text-xs rounded-md transition-colors flex items-center gap-1"
-              title="Print Member Slip"
-            >
-              <i className="fa-solid fa-print text-[11px]"></i>
-              Print
-            </button>
-
-            {/* Delete */}
-            <button
-              onClick={() => handleDelete(member)}
-              disabled={deletingId === member._id}
-              className="px-2.5 py-1 bg-slate-100 hover:bg-rose-50 text-rose-600 font-bold text-xs rounded-md transition-colors flex items-center gap-1 disabled:opacity-50"
-              title="Delete Member Profile"
-            >
-              <i className="fa-solid fa-trash text-[11px]"></i>
-              {deletingId === member._id ? '...' : 'Delete'}
-            </button>
-          </div>
-        )}
+        actions={renderActions}
       />
 
       {/* Pagination */}

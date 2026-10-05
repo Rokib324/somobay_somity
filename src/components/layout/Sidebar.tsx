@@ -233,7 +233,7 @@ function getInitials(name: string): string {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 }
 
-export const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void }> = ({ isOpen, toggleSidebar }) => {
+export const Sidebar = React.memo(function Sidebar({ isOpen, toggleSidebar }: { isOpen: boolean; toggleSidebar: () => void }) {
   const pathname = usePathname();
   const { user, logout, authorizedMenus } = useAuth();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => getInitialOpenMenus(pathname));
@@ -242,9 +242,12 @@ export const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void }> =
   const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
 
   // Use dynamic authorized menus from server if loaded; fallback to static role filter
-  const navGroups = (authorizedMenus && authorizedMenus.length > 0)
-    ? authorizedMenus
-    : (user ? filterNavGroups(user.role) : []);
+  const navGroups = React.useMemo(
+    () => (authorizedMenus && authorizedMenus.length > 0)
+      ? authorizedMenus
+      : (user ? filterNavGroups(user.role) : []),
+    [authorizedMenus, user]
+  );
 
   // Automatically keep parent menu open if active path is in its submenu
   useEffect(() => {
@@ -447,4 +450,4 @@ export const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void }> =
       </div>
     </aside>
   );
-};
+});
