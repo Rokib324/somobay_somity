@@ -78,6 +78,7 @@ export interface LoanAccount {
   memberId: string;
   productName: string;
   principalAmount: number;
+  interestRate?: number;
   interestAmount: number;
   totalAmount: number;
   paidAmount: number;

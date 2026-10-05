@@ -27,15 +27,147 @@ export interface EnrichedRepaymentRecord {
   status: 'paid' | 'pending' | 'overdue' | 'partial';
 }
 
+export interface AmortizationRow {
+  month: number;
+  principal: number;
+  interest: number;
+  balance: number;
+  dueDate: Date;
+  isPaid: boolean;
+  isOverdue: boolean;
+  status: 'paid' | 'pending' | 'overdue';
+}
+
+export interface AmortizationSummary {
+  loanAmount: number;
+  interestRate: number;
+  tenureMonths: number;
+  monthlyEmi: number;
+  totalInterest: number;
+  totalPayable: number;
+  schedule: AmortizationRow[];
+}
+
+export function calculateAmortization(loan: LoanAccount | undefined): AmortizationSummary {
+  if (!loan) {
+    return {
+      loanAmount: 500000,
+      interestRate: 12,
+      tenureMonths: 60,
+      monthlyEmi: 11122,
+      totalInterest: 167333,
+      totalPayable: 667333,
+      schedule: [],
+    };
+  }
+
+  const P = loan.principalAmount || 500000;
+  const n = loan.installments || 60;
+
+  // Annual interest rate (default to 12% if not set or derive from totalAmount/interestAmount)
+  let annualRate = 12;
+  if (typeof loan.interestRate === 'number' && loan.interestRate > 0) {
+    annualRate = loan.interestRate;
+  } else if (loan.interestAmount && loan.principalAmount) {
+    annualRate = Math.round(((loan.interestAmount / loan.principalAmount) * (12 / n)) * 100 * 100) / 100;
+  } else if (loan.totalAmount && loan.totalAmount > P) {
+    annualRate = Math.round((((loan.totalAmount - P) / P) * (12 / n)) * 100 * 100) / 100;
+  }
+  if (annualRate <= 0) annualRate = 12;
+
+  const r = (annualRate / 100) / 12;
+
+  // Exact EMI calculation using standard reducing balance formula
+  const exactEmi = r > 0 ? (P * (r * Math.pow(1 + r, n))) / (Math.pow(1 + r, n) - 1) : P / n;
+  const emi = Math.round(exactEmi);
+
+  let currentBalance = P;
+  let totalInterest = 0;
+  const schedule: AmortizationRow[] = [];
+  const today = new Date();
+  const baseDate = loan.disbursementDate
+    ? new Date(loan.disbursementDate)
+    : loan.applicationDate
+    ? new Date(loan.applicationDate)
+    : new Date();
+
+  const paidTotal = loan.paidAmount || 0;
+  const numPaid = Math.min(
+    n,
+    Math.floor(paidTotal / (emi || 1)) || (loan.status === 'closed' ? n : 0)
+  );
+
+  for (let m = 1; m <= n; m++) {
+    const dueDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + m, 10);
+    const monthInterest = currentBalance * r;
+    const monthPrincipal = exactEmi - monthInterest;
+    currentBalance = Math.max(0, currentBalance - monthPrincipal);
+
+    totalInterest += monthInterest;
+    const isPaid = m <= numPaid || loan.status === 'closed';
+    const isOverdue = !isPaid && today.getTime() > dueDate.getTime();
+    const status: 'paid' | 'pending' | 'overdue' = isPaid
+      ? 'paid'
+      : isOverdue
+      ? 'overdue'
+      : 'pending';
+
+    schedule.push({
+      month: m,
+      principal: Math.round(monthPrincipal),
+      interest: Math.round(monthInterest),
+      balance: Math.round(currentBalance),
+      dueDate,
+      isPaid,
+      isOverdue,
+      status,
+    });
+  }
+
+  if (schedule.length > 0) {
+    schedule[schedule.length - 1].balance = 0;
+  }
+
+  const roundedTotalInterest = Math.round(totalInterest);
+
+  return {
+    loanAmount: P,
+    interestRate: annualRate,
+    tenureMonths: n,
+    monthlyEmi: emi,
+    totalInterest: roundedTotalInterest,
+    totalPayable: P + roundedTotalInterest,
+    schedule,
+  };
+}
+
 export function MemberFinancialDisciplineSection({
   loans,
   memberName,
   memberAccountNo,
   memberBranch,
 }: MemberFinancialDisciplineSectionProps) {
-  const [selectedLoanId, setSelectedLoanId] = useState<string>('all');
+  const [selectedLoanId, setSelectedLoanId] = useState<string>(loans[0]?.loanNo || 'all');
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [showStatus, setShowStatus] = useState<boolean>(true);
   const printRef = useRef<HTMLDivElement>(null);
+
+  const handleFilterChange = (filter: string) => {
+    setSelectedFilter(filter);
+    setCurrentPage(1);
+  };
+
+  const handleLoanChange = (loanId: string) => {
+    setSelectedLoanId(loanId);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   // Generate or extract comprehensive repayment history records
   const allRecords: EnrichedRepaymentRecord[] = useMemo(() => {
@@ -306,6 +438,43 @@ export function MemberFinancialDisciplineSection({
     });
   }, [allRecords, selectedLoanId, selectedFilter]);
 
+  const currentLoan = useMemo(() => {
+    if (loans.length === 0) return undefined;
+    if (selectedLoanId !== 'all') {
+      return loans.find(l => l.loanNo === selectedLoanId) || loans[0];
+    }
+    return loans[0];
+  }, [loans, selectedLoanId]);
+
+  const amortization = useMemo(() => {
+    return calculateAmortization(currentLoan);
+  }, [currentLoan]);
+
+  // Pagination calculation based on amortization schedule
+  const totalPages = Math.max(1, Math.ceil(amortization.schedule.length / pageSize));
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, amortization.schedule.length);
+
+  const paginatedSchedule = useMemo(() => {
+    return amortization.schedule.slice(startIndex, endIndex);
+  }, [amortization.schedule, startIndex, endIndex]);
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: (number | string)[] = [];
+    if (validCurrentPage <= 4) {
+      pages.push(1, 2, 3, 4, 5, '...', totalPages);
+    } else if (validCurrentPage >= totalPages - 3) {
+      pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+    } else {
+      pages.push(1, '...', validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, '...', totalPages);
+    }
+    return pages;
+  };
+
   const handlePrintDiscipline = () => {
     if (!printRef.current) return;
     const printWindow = window.open('', '_blank', 'width=900,height=750');
@@ -314,99 +483,109 @@ export function MemberFinancialDisciplineSection({
       return;
     }
 
+    const generatedDate = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Member Financial Discipline & Credit History - ${memberName} (${memberAccountNo})</title>
+          <title>Repayment Schedule - ${memberName} (${memberAccountNo})</title>
           <style>
             @page { size: portrait; margin: 12mm; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; color: #0f172a; padding: 15px; margin: 0; }
-            .header { border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; margin-bottom: 15px; }
-            .org-title { font-size: 16px; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0; }
-            .meta { margin-top: 5px; font-size: 11px; color: #475569; }
-            .score-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin: 15px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-            th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px; font-size: 10px; text-align: left; }
-            td { border: 1px solid #cbd5e1; padding: 6px; font-size: 10px; }
+            .header-flex { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 6px; }
+            .bank-title { font-size: 20px; font-weight: 900; color: #0066b2; text-transform: uppercase; margin: 0; }
+            .sched-title { font-size: 14px; font-weight: 800; color: #0f172a; margin: 0; text-align: right; }
+            .prod-title { font-size: 11px; font-weight: 700; color: #0066b2; text-align: right; }
+            .gen-date { font-size: 10px; color: #64748b; text-align: right; }
+            .blue-line { border-bottom: 2px solid #0066b2; margin: 8px 0 16px 0; }
+            .meta-bar { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 10px; color: #334155; }
+            .section-title { font-size: 13px; font-weight: 800; color: #0f172a; margin: 14px 0 8px 0; }
+            .summary-table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; margin-bottom: 16px; font-size: 11px; }
+            .summary-table td { border-bottom: 1px solid #cbd5e1; padding: 6px 12px; }
+            .summary-label { width: 50%; color: #334155; font-weight: 500; }
+            .summary-val { width: 50%; color: #0f172a; font-weight: 700; }
+            .amort-table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 10px; }
+            .amort-table th { background: #0066b2; color: #ffffff; padding: 6px 10px; font-weight: 700; }
+            .amort-table td { border-bottom: 1px solid #cbd5e1; padding: 5px 10px; }
+            .amort-table tr:nth-child(even) td { background: #f8fafc; }
+            .text-left { text-align: left; }
             .text-right { text-align: right; }
-            .text-center { text-align: center; }
-            .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px; }
-            .badge-great { background: #ede9fe; color: #5b21b6; }
-            .badge-early { background: #dcfce7; color: #166534; }
-            .badge-ok { background: #dbeafe; color: #1e40af; }
-            .badge-late { background: #fee2e2; color: #991b1b; }
-            .footer { margin-top: 40px; display: flex; justify-content: space-between; font-size: 10px; color: #64748b; }
-            .sig-line { border-top: 1px solid #64748b; width: 150px; text-align: center; padding-top: 4px; }
+            .footer-notes { margin-top: 25px; display: flex; justify-content: space-between; font-size: 9px; color: #64748b; }
+            .sig-area { margin-top: 35px; display: flex; justify-content: space-between; font-size: 10px; color: #475569; }
+            .sig-line { border-top: 1px solid #94a3b8; width: 140px; text-align: center; padding-top: 4px; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1 class="org-title">Somity Online Multi-Purpose Cooperative Society</h1>
-            <div class="meta">
-              <strong>Member:</strong> ${memberName} &nbsp;|&nbsp;
-              <strong>Account No:</strong> ${memberAccountNo} &nbsp;|&nbsp;
-              <strong>Branch:</strong> ${memberBranch} &nbsp;|&nbsp;
-              <strong>Report Date:</strong> ${new Date().toLocaleDateString()}
+          <div class="header-flex">
+            <div>
+              <h1 class="bank-title">Somobay Somity</h1>
+              <div style="font-size: 10px; color: #64748b; margin-top: 2px;">Co-operative Society · Member Credit Facility</div>
+            </div>
+            <div>
+              <div class="sched-title">Repayment Schedule</div>
+              <div class="prod-title">${currentLoan?.productName || 'Personal Loan'}</div>
+              <div class="gen-date">Generated: ${generatedDate}</div>
             </div>
           </div>
-          <div class="score-box">
-            <strong>Credit & Financial Discipline Rating:</strong> ${metrics.tier} (${metrics.score}/1000 Pts)<br/>
-            <strong>Punctuality Track Record:</strong> ${metrics.punctualityPercent}% On-Time/Early |
-            Way Early: ${metrics.wayEarly} | Early & Good: ${metrics.early} | On-Time: ${metrics.onTime} | Late: ${metrics.late}<br/>
-            <strong>Loan Policy Recommendation:</strong> ${metrics.recommendation}
+          <div class="blue-line"></div>
+
+          <div class="meta-bar">
+            <strong>Member Name:</strong> ${memberName} &nbsp;|&nbsp;
+            <strong>Member ID:</strong> ${memberAccountNo} &nbsp;|&nbsp;
+            <strong>Branch:</strong> ${memberBranch} &nbsp;|&nbsp;
+            <strong>Loan Ref:</strong> ${currentLoan?.loanNo || 'LOAN-001'}
           </div>
-          <h3>Official Monthly Installment Punctuality Ledger</h3>
-          <table>
+
+          <div class="section-title">Loan Summary</div>
+          <table class="summary-table">
+            <tbody>
+              <tr><td class="summary-label">Loan Amount</td><td class="summary-val">BDT ${amortization.loanAmount.toLocaleString('en-IN')}</td></tr>
+              <tr><td class="summary-label">Interest Rate</td><td class="summary-val">${amortization.interestRate.toFixed(2)}% yearly</td></tr>
+              <tr><td class="summary-label">Tenure</td><td class="summary-val">${amortization.tenureMonths} months</td></tr>
+              <tr><td class="summary-label">Monthly EMI</td><td class="summary-val">BDT ${amortization.monthlyEmi.toLocaleString('en-IN')}</td></tr>
+              <tr><td class="summary-label">Total Interest</td><td class="summary-val">BDT ${amortization.totalInterest.toLocaleString('en-IN')}</td></tr>
+              <tr><td class="summary-label" style="border-bottom:none;">Total Payable</td><td class="summary-val" style="border-bottom:none;">BDT ${amortization.totalPayable.toLocaleString('en-IN')}</td></tr>
+            </tbody>
+          </table>
+
+          <div class="section-title">Monthly Amortization Schedule</div>
+          <table class="amort-table">
             <thead>
               <tr>
-                <th>Inst #</th>
-                <th>Loan No & Product</th>
-                <th>Due Date</th>
-                <th class="text-right">Scheduled Due</th>
-                <th>Payment Date</th>
-                <th class="text-right">Paid Amount</th>
-                <th class="text-center">Discipline Rating</th>
-                <th>Variance Timing</th>
+                <th class="text-left" style="width: 15%;">Month</th>
+                <th class="text-right" style="width: 28%;">Principal (BDT)</th>
+                <th class="text-right" style="width: 28%;">Interest (BDT)</th>
+                <th class="text-right" style="width: 29%;">Balance (BDT)</th>
               </tr>
             </thead>
             <tbody>
-              ${filteredRecords.map(r => `
+              ${amortization.schedule.map(row => `
                 <tr>
-                  <td>#${r.installmentNo}</td>
-                  <td><strong>${r.loanNo}</strong> - ${r.productName}</td>
-                  <td>${r.dueDate.toLocaleDateString()}</td>
-                  <td class="text-right font-bold">৳ ${r.expectedAmount.toLocaleString()}</td>
-                  <td>${r.paidDate ? r.paidDate.toLocaleDateString() : 'Pending'}</td>
-                  <td class="text-right">৳ ${r.paidAmount.toLocaleString()}</td>
-                  <td class="text-center">
-                    <span class="badge ${
-                      r.rating === 'WAY_EARLY' ? 'badge-great' :
-                      r.rating === 'EARLY' ? 'badge-early' :
-                      r.rating === 'ON_TIME' ? 'badge-ok' :
-                      r.rating === 'LATE' ? 'badge-late' : ''
-                    }">${r.rating}</span>
-                  </td>
-                  <td>${
-                    r.status === 'paid'
-                      ? r.daysDiff > 0
-                        ? `${r.daysDiff} days early`
-                        : r.daysDiff === 0
-                        ? 'On Due Date'
-                        : `${Math.abs(r.daysDiff)} days late`
-                      : r.rating === 'OVERDUE'
-                      ? `${Math.abs(r.daysDiff)} days overdue`
-                      : 'Upcoming'
-                  }</td>
+                  <td class="text-left font-medium">${row.month}</td>
+                  <td class="text-right">${row.principal.toLocaleString('en-IN')}</td>
+                  <td class="text-right">${row.interest.toLocaleString('en-IN')}</td>
+                  <td class="text-right font-bold">${row.balance.toLocaleString('en-IN')}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-          <div class="footer">
+
+          <div class="footer-notes">
+            <span>Generated by Somobay Somity ERP · somity.online</span>
+            <span>Page 1 of 1</span>
+          </div>
+
+          <div class="sig-area">
+            <div class="sig-line">Prepared By (Teller)</div>
             <div class="sig-line">Credit Officer</div>
-            <div class="sig-line">Branch Manager</div>
             <div class="sig-line">Member Acceptance</div>
           </div>
+
           <script>
             window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; }
           </script>
@@ -520,243 +699,294 @@ export function MemberFinancialDisciplineSection({
         </div>
       </div>
 
-      {/* Filter and Selector Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <button
-            type="button"
-            onClick={() => setSelectedFilter('all')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs transition-colors ${
-              selectedFilter === 'all'
-                ? 'bg-slate-900 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            All ({allRecords.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter('early')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs transition-colors ${
-              selectedFilter === 'early'
-                ? 'bg-emerald-600 text-white'
-                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-            }`}
-          >
-            Early / Great ({metrics.wayEarly + metrics.early})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter('ontime')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs transition-colors ${
-              selectedFilter === 'ontime'
-                ? 'bg-blue-600 text-white'
-                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-            }`}
-          >
-            On Time ({metrics.onTime})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter('late')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs transition-colors ${
-              selectedFilter === 'late'
-                ? 'bg-rose-600 text-white'
-                : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-            }`}
-          >
-            Late ({metrics.late})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedFilter('upcoming')}
-            className={`px-3 py-1 rounded-lg font-bold text-xs transition-colors ${
-              selectedFilter === 'upcoming'
-                ? 'bg-slate-700 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Upcoming ({metrics.upcoming})
-          </button>
-        </div>
-
-        {loans.length > 1 && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 font-medium">Loan:</span>
-            <select
-              value={selectedLoanId}
-              onChange={e => setSelectedLoanId(e.target.value)}
-              className="px-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-white font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="all">All Loans ({loans.length})</option>
-              {loans.map(l => (
-                <option key={l._id || l.id} value={l.loanNo}>
-                  {l.loanNo} ({l.productName})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Repayment History Table */}
-      {allRecords.length === 0 ? (
-        <div className="text-center py-10 text-slate-400 text-xs">
+      {/* Repayment Schedule Document (Design matching Bank Repayment Schedule) */}
+      {!currentLoan ? (
+        <div className="text-center py-10 text-slate-400 text-xs bg-slate-50 border border-slate-200 rounded-xl">
           <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2 text-xl">
             <i className="fa-solid fa-handshake"></i>
           </div>
           <h4 className="font-bold text-slate-700 mb-0.5">No Loan Borrowing History</h4>
           <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-            This member currently has no loan accounts on record. First-time applicant credit evaluation guidelines will apply.
+            This member currently has no loan accounts on record.
           </p>
         </div>
-      ) : filteredRecords.length === 0 ? (
-        <div className="text-center py-8 text-slate-400 text-xs">
-          No records matching the selected punctuality filter.
-        </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
-                <th className="py-2.5 px-3">Inst #</th>
-                <th className="py-2.5 px-3">Loan Reference</th>
-                <th className="py-2.5 px-3">Scheduled Due Date</th>
-                <th className="py-2.5 px-3 text-right">Expected (৳)</th>
-                <th className="py-2.5 px-3">Actual Payment Date</th>
-                <th className="py-2.5 px-3 text-right">Paid (৳)</th>
-                <th className="py-2.5 px-3 text-center">Discipline Rating</th>
-                <th className="py-2.5 px-3">Timing Variance</th>
-                <th className="py-2.5 px-3 text-center">Score Impact</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredRecords.map(record => {
-                const isWayEarly = record.rating === 'WAY_EARLY';
-                const isEarly = record.rating === 'EARLY';
-                const isOnTime = record.rating === 'ON_TIME';
-                const isLate = record.rating === 'LATE';
-                const isOverdue = record.rating === 'OVERDUE';
+        <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 card-shadow space-y-6">
+          {/* Document Header Area */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pb-1">
+            <div>
+              <h2 className="text-2xl font-black text-[#0066b2] tracking-tight">
+                Somobay Somity
+              </h2>
+              <span className="text-[11px] text-slate-500 font-semibold block">
+                Co-operative Society · Member Credit Facility
+              </span>
+            </div>
+            <div className="text-left sm:text-right">
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight leading-none">
+                Repayment Schedule
+              </h3>
+              <span className="text-xs font-bold text-[#0066b2] block mt-1">
+                {currentLoan.productName || 'Personal Loan'}
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium block">
+                Generated: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+          </div>
 
-                return (
-                  <tr key={record.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-3 font-mono font-bold text-slate-700">
-                      #{record.installmentNo.toString().padStart(2, '0')}
-                    </td>
+          {/* Accent Blue Divider Line (matching the image) */}
+          <div className="border-b-2 border-[#0066b2] w-full"></div>
 
-                    <td className="py-3 px-3">
-                      <span className="font-mono font-bold text-blue-600 block">{record.loanNo}</span>
-                      <span className="text-[10px] text-slate-400 block">{record.productName}</span>
-                    </td>
+          {/* Active Loan Switcher (if member holds multiple loans) */}
+          {loans.length > 1 && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs gap-2">
+              <div className="flex items-center gap-2">
+                <i className="fa-solid fa-layer-group text-[#0066b2]"></i>
+                <span className="font-semibold text-slate-700">Member has {loans.length} loans on record. Select loan:</span>
+              </div>
+              <select
+                value={selectedLoanId}
+                onChange={e => {
+                  setSelectedLoanId(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-1.5 border border-slate-300 rounded-lg bg-white font-bold text-slate-800 text-xs focus:ring-1 focus:ring-blue-500"
+              >
+                {loans.map(l => (
+                  <option key={l._id || l.id} value={l.loanNo}>
+                    {l.loanNo} — {l.productName} (BDT {l.principalAmount.toLocaleString('en-IN')})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-                    <td className="py-3 px-3 font-medium text-slate-800">
-                      {record.dueDate.toLocaleDateString('en-US', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                      <span className="text-[10px] text-slate-400 block">(10th of month)</span>
-                    </td>
-
-                    <td className="py-3 px-3 text-right font-bold text-slate-800">
-                      ৳ {record.expectedAmount.toLocaleString()}
-                    </td>
-
-                    <td className="py-3 px-3 font-medium">
-                      {record.paidDate ? (
-                        <span className="text-slate-800 font-semibold block">
-                          {record.paidDate.toLocaleDateString('en-US', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 italic text-[11px]">Unpaid / Pending</span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-3 text-right font-bold text-emerald-600">
-                      ৳ {record.paidAmount.toLocaleString()}
-                    </td>
-
-                    <td className="py-3 px-3 text-center">
-                      {isWayEarly && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-50 text-purple-700 border border-purple-200">
-                          <i className="fa-solid fa-crown text-[9px] text-purple-600"></i>
-                          Way Early (Great!)
-                        </span>
-                      )}
-                      {isEarly && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <i className="fa-solid fa-circle-check text-[9px] text-emerald-600"></i>
-                          Early & Good
-                        </span>
-                      )}
-                      {isOnTime && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
-                          <i className="fa-solid fa-calendar-check text-[9px] text-blue-600"></i>
-                          OK (On Due Date)
-                        </span>
-                      )}
-                      {isLate && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
-                          <i className="fa-solid fa-clock-rotate-left text-[9px] text-amber-600"></i>
-                          Late Repayment
-                        </span>
-                      )}
-                      {isOverdue && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
-                          <i className="fa-solid fa-triangle-exclamation text-[9px] text-rose-600"></i>
-                          Overdue
-                        </span>
-                      )}
-                      {record.rating === 'UPCOMING' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                          <i className="fa-solid fa-hourglass-half text-[9px]"></i>
-                          Upcoming
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-3 text-[11px]">
-                      {record.status === 'paid' ? (
-                        record.daysDiff > 0 ? (
-                          <span className="text-emerald-700 font-bold">
-                            {record.daysDiff} days early
-                          </span>
-                        ) : record.daysDiff === 0 ? (
-                          <span className="text-blue-700 font-bold">Paid on Due Date</span>
-                        ) : (
-                          <span className="text-rose-600 font-bold">
-                            {Math.abs(record.daysDiff)} days late
-                          </span>
-                        )
-                      ) : record.rating === 'OVERDUE' ? (
-                        <span className="text-rose-600 font-bold">
-                          {Math.abs(record.daysDiff)} days overdue
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">
-                          Due in {record.daysDiff} days
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-3 text-center font-bold">
-                      {record.scoreImpact > 0 ? (
-                        <span className="text-emerald-600 font-mono text-xs">+{record.scoreImpact} pts</span>
-                      ) : record.scoreImpact < 0 ? (
-                        <span className="text-rose-600 font-mono text-xs">{record.scoreImpact} pts</span>
-                      ) : (
-                        <span className="text-slate-400 font-mono text-xs">—</span>
-                      )}
+          {/* 1. Loan Summary Table (Exactly as in the image) */}
+          <div>
+            <h4 className="text-base font-bold text-slate-900 mb-3 tracking-tight">
+              Loan Summary
+            </h4>
+            <div className="border border-slate-200 rounded-none overflow-hidden">
+              <table className="w-full text-xs border-collapse">
+                <tbody>
+                  <tr className="border-b border-slate-200 bg-white hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2.5 px-4 text-slate-800 font-medium w-1/2">Loan Amount</td>
+                    <td className="py-2.5 px-4 text-slate-900 font-bold w-1/2">
+                      BDT {amortization.loanAmount.toLocaleString('en-IN')}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                  <tr className="border-b border-slate-200 bg-white hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2.5 px-4 text-slate-800 font-medium">Interest Rate</td>
+                    <td className="py-2.5 px-4 text-slate-900 font-bold">
+                      {amortization.interestRate.toFixed(2)}% yearly
+                    </td>
+                  </tr>
+                  <tr className="border-b border-slate-200 bg-white hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2.5 px-4 text-slate-800 font-medium">Tenure</td>
+                    <td className="py-2.5 px-4 text-slate-900 font-bold">
+                      {amortization.tenureMonths} months
+                    </td>
+                  </tr>
+                  <tr className="border-b border-slate-200 bg-white hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2.5 px-4 text-slate-800 font-medium">Monthly EMI</td>
+                    <td className="py-2.5 px-4 text-slate-900 font-bold">
+                      BDT {amortization.monthlyEmi.toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-slate-200 bg-white hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2.5 px-4 text-slate-800 font-medium">Total Interest</td>
+                    <td className="py-2.5 px-4 text-slate-900 font-bold">
+                      BDT {amortization.totalInterest.toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                  <tr className="bg-white hover:bg-slate-50/50 transition-colors">
+                    <td className="py-2.5 px-4 text-slate-800 font-medium">Total Payable</td>
+                    <td className="py-2.5 px-4 text-slate-900 font-bold">
+                      BDT {amortization.totalPayable.toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 2. Monthly Amortization Schedule Table (Exactly as in the image) */}
+          <div className="pt-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+              <h4 className="text-base font-bold text-slate-900 tracking-tight">
+                Monthly Amortization Schedule
+              </h4>
+              <div className="flex items-center gap-3 text-xs">
+                {/* Status Toggle */}
+                <label className="flex items-center gap-1.5 text-slate-600 cursor-pointer select-none font-medium">
+                  <input
+                    type="checkbox"
+                    checked={showStatus}
+                    onChange={e => setShowStatus(e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                  />
+                  <span>Show Payment Status</span>
+                </label>
+
+                {/* Page Size Segmented Button */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 font-medium">View:</span>
+                  <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100/70 p-0.5 shadow-xs">
+                    {[5, 10, 20].map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => handlePageSizeChange(size)}
+                        className={`px-2.5 py-0.5 text-xs font-bold rounded-md transition-all ${
+                          pageSize === size
+                            ? 'bg-[#0066b2] text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                        }`}
+                        title={`View ${size} installments per page`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Amortization Table */}
+            <div className="border border-slate-200 rounded-none overflow-x-auto shadow-xs">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#0066b2] text-white font-bold">
+                    <th className="py-2.5 px-4 text-left font-bold border-r border-blue-400/30 tracking-tight" style={{ width: '15%' }}>
+                      Month
+                    </th>
+                    <th className="py-2.5 px-4 text-right font-bold border-r border-blue-400/30 tracking-tight" style={{ width: '28%' }}>
+                      Principal (BDT)
+                    </th>
+                    <th className="py-2.5 px-4 text-right font-bold border-r border-blue-400/30 tracking-tight" style={{ width: '28%' }}>
+                      Interest (BDT)
+                    </th>
+                    <th className="py-2.5 px-4 text-right font-bold tracking-tight" style={{ width: '29%' }}>
+                      Balance (BDT)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedSchedule.map(row => (
+                    <tr
+                      key={`month-${row.month}`}
+                      className="odd:bg-white even:bg-[#f8fafc] border-b border-slate-200 hover:bg-blue-50/30 transition-colors"
+                    >
+                      <td className="py-2 px-4 text-slate-800 font-medium border-r border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{row.month}</span>
+                          {showStatus && row.isPaid && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <i className="fa-solid fa-check text-[8px]"></i>
+                              Paid
+                            </span>
+                          )}
+                          {showStatus && row.isOverdue && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              <i className="fa-solid fa-exclamation text-[8px]"></i>
+                              Overdue
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2 px-4 text-right text-slate-800 font-medium border-r border-slate-100">
+                        {row.principal.toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-2 px-4 text-right text-slate-800 font-medium border-r border-slate-100">
+                        {row.interest.toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-2 px-4 text-right font-bold text-slate-900">
+                        {row.balance.toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Document Footer with Pagination Controls */}
+            <div className="mt-3 py-2 px-1 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-500 font-medium">
+              <span className="text-slate-400 text-[11px]">
+                Generated by Somobay Somity ERP · somity.online
+              </span>
+
+              {/* Page Navigation */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500 text-xs mr-1 font-semibold">
+                  Page {validCurrentPage} of {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={validCurrentPage === 1}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed transition-colors shadow-xs"
+                  title="First Page"
+                >
+                  <i className="fa-solid fa-angles-left text-[10px]"></i>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={validCurrentPage === 1}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed transition-colors shadow-xs"
+                  title="Previous Page"
+                >
+                  <i className="fa-solid fa-chevron-left text-[10px]"></i>
+                </button>
+
+                <div className="flex items-center gap-1 mx-0.5">
+                  {getPageNumbers().map((pageNum, idx) =>
+                    pageNum === '...' ? (
+                      <span key={`dots-${idx}`} className="w-7 h-7 flex items-center justify-center text-slate-400 font-bold select-none text-xs">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={`page-${pageNum}`}
+                        type="button"
+                        onClick={() => setCurrentPage(Number(pageNum))}
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                          validCurrentPage === pageNum
+                            ? 'bg-[#0066b2] text-white shadow-xs'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 shadow-xs'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={validCurrentPage === totalPages}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed transition-colors shadow-xs"
+                  title="Next Page"
+                >
+                  <i className="fa-solid fa-chevron-right text-[10px]"></i>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={validCurrentPage === totalPages}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed transition-colors shadow-xs"
+                  title="Last Page"
+                >
+                  <i className="fa-solid fa-angles-right text-[10px]"></i>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
